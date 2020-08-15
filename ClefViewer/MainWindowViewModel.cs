@@ -22,9 +22,19 @@ namespace ClefViewer
             logRecords = new ObservableCollection<string>();
             SelectedIndex = 0;
             OpenFileDialogCommand = new DelegateCommand(ExecuteOpenFileDialog);
+            ClearCommand = new DelegateCommand(ExecuteClearCommand, () => !string.IsNullOrEmpty(LogFilePath));
+        }
+
+        private void ExecuteClearCommand()
+        {
+            LeftPane = string.Empty;
+            logRecords.Clear();
+            LogFilePath = string.Empty;
         }
 
         public ICommand OpenFileDialogCommand { get; }
+
+        public ICommand ClearCommand {get;}
 
         public IEnumerable<string> LogRecords => logRecords;
 
