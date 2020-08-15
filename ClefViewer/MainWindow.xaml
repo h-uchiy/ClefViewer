@@ -3,10 +3,44 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ClefViewer"
+        xmlns:clefViewer="clr-namespace:ClefViewer"
+        xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Clef Viewer" Height="768" Width="1024"
+        d:DesignHeight="400" d:DesignWidth="600">
+    <Window.Resources>
+    </Window.Resources>
+    <Window.DataContext>
+        <clefViewer:MainWindowViewModel/>
+    </Window.DataContext>
+    <dxmvvm:Interaction.Behaviors>
+        <dxmvvm:OpenFileDialogService/>
+    </dxmvvm:Interaction.Behaviors>
     <Grid>
-
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <StackPanel Margin="2" Grid.Row="0" Orientation="Horizontal">
+            <Label Content="Log file"/>
+            <TextBox Margin="2" Text="{Binding LogFilePath}" Width="300" />
+            <Button Margin="2" Content="..." MinWidth="16" Command="{Binding OpenFileDialogCommand}" />
+        </StackPanel>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" MinWidth="100"/>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+            <ListBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecords}" SelectedIndex="{Binding SelectedIndex}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Stretch" ShowsPreview="True" Width="5"/>
+            <TextBox Grid.Column="2" IsReadOnly="True" Text="{Binding LeftPane}"></TextBox>
+        </Grid>
     </Grid>
 </Window>
