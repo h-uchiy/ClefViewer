@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using ClefViewer.Properties;
 using DevExpress.Mvvm;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -21,11 +22,12 @@ namespace ClefViewer
         {
             logRecords = new ObservableCollection<string>();
             SelectedIndex = 0;
-            OpenFileDialogCommand = new DelegateCommand(ExecuteOpenFileDialog);
-            ClearCommand = new DelegateCommand(ExecuteClearCommand, () => !string.IsNullOrEmpty(LogFilePath));
+            OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
+            ClearCommand = new DelegateCommand(Clear, () => !string.IsNullOrEmpty(LogFilePath));
+            LogFilePath = Settings.Default.LogFilePath;
         }
 
-        private void ExecuteClearCommand()
+        private void Clear()
         {
             LeftPane = string.Empty;
             logRecords.Clear();
@@ -34,7 +36,7 @@ namespace ClefViewer
 
         public ICommand OpenFileDialogCommand { get; }
 
-        public ICommand ClearCommand {get;}
+        public ICommand ClearCommand { get; }
 
         public IEnumerable<string> LogRecords => logRecords;
 
@@ -43,9 +45,13 @@ namespace ClefViewer
             get => selectedIndex;
             set
             {
-                if (SetValue(ref selectedIndex, value) && 0 <= selectedIndex)
+                if (SetValue(ref selectedIndex, value))
                 {
-                    LeftPane = FormatJson(logRecords[selectedIndex]);
+                    Settings.Default.LogFilePath = LogFilePath;
+                    if (0 <= selectedIndex)
+                    {
+                        LeftPane = FormatJson(logRecords[selectedIndex]);
+                    }
                 }
             }
         }
@@ -66,6 +72,7 @@ namespace ClefViewer
                     if (File.Exists(logFilePath))
                     {
                         LoadLogFile();
+                        Settings.Default.LogFilePath = LogFilePath;
                     }
                     else
                     {
@@ -114,7 +121,7 @@ namespace ClefViewer
             }
         }
 
-        private void ExecuteOpenFileDialog()
+        private void OpenFileDialog()
         {
             var service = GetService<IOpenFileDialogService>();
             service.Filter = "Compact Log Event Format File (*.clef)|*.clef|Log File (*.log)|*.log|Text File (*.txt)|*.txt|All File (*.*)|*.*";
