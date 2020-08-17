@@ -11,5 +11,11 @@
     <Setting Name="MainWindowHeight" Type="System.Double" Scope="User">
       <Value Profile="(Default)">400</Value>
     </Setting>
+    <Setting Name="RightPaneWidth" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1*</Value>
+    </Setting>
+    <Setting Name="LeftPaneWidth" Type="System.String" Scope="User">
+      <Value Profile="(Default)">3*</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -11,6 +11,9 @@
         Height="{Binding MainWindowWidth, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
         Width="{Binding MainWindowHeight, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
         d:DesignHeight="400" d:DesignWidth="600">
+    <Window.Resources>
+        <clefViewer:StringToGridLengthConverter x:Key="stringToGridLengthConverter"/>
+    </Window.Resources>
     <Window.DataContext>
         <clefViewer:MainWindowViewModel/>
     </Window.DataContext>
@@ -30,9 +33,9 @@
         </StackPanel>
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1*" MinWidth="100"/>
+                <ColumnDefinition Width="{Binding RightPaneWidth, Source={x:Static p:Settings.Default}, Mode=TwoWay, Converter={StaticResource stringToGridLengthConverter}}" MinWidth="100"/>
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="{Binding LeftPaneWidth, Source={x:Static p:Settings.Default}, Mode=TwoWay, Converter={StaticResource stringToGridLengthConverter}}" />
             </Grid.ColumnDefinitions>
             <ListBox Grid.Column="0" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecords}" SelectedIndex="{Binding SelectedIndex}">
                 <ListBox.ItemTemplate>

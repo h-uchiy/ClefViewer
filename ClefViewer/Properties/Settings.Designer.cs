@@ -58,5 +58,29 @@ namespace ClefViewer.Properties {
                 this["MainWindowHeight"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1*")]
+        public string RightPaneWidth {
+            get {
+                return ((string)(this["RightPaneWidth"]));
+            }
+            set {
+                this["RightPaneWidth"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("3*")]
+        public string LeftPaneWidth {
+            get {
+                return ((string)(this["LeftPaneWidth"]));
+            }
+            set {
+                this["LeftPaneWidth"] = value;
+            }
+        }
     }
 }
