@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='utf-8'?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="ClefViewer.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
@@ -6,16 +6,29 @@
       <Value Profile="(Default)" />
     </Setting>
     <Setting Name="MainWindowWidth" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">600</Value>
+      <Value Profile="(Default)">800</Value>
     </Setting>
     <Setting Name="MainWindowHeight" Type="System.Double" Scope="User">
       <Value Profile="(Default)">400</Value>
     </Setting>
     <Setting Name="RightPaneWidth" Type="System.String" Scope="User">
-      <Value Profile="(Default)">1*</Value>
+      <Value Profile="(Default)" />
     </Setting>
     <Setting Name="LeftPaneWidth" Type="System.String" Scope="User">
-      <Value Profile="(Default)">3*</Value>
+      <Value Profile="(Default)">432</Value>
+    </Setting>
+    <Setting Name="RenderTemplate" Type="System.String" Scope="User">
+      <Value Profile="(Default)">{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:l}</Value>
+    </Setting>
+    <Setting Name="Render" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="Unescape" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="AppName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Compact Log Event Format File Viewer</Value>
     </Setting>
   </Settings>
 </SettingsFile>
+

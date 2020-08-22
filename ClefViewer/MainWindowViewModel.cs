@@ -1,11 +1,14 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using ClefViewer.Properties;
 using DevExpress.Mvvm;
+using DevExpress.Mvvm.Native;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -13,86 +16,111 @@ namespace ClefViewer
 {
     public class MainWindowViewModel : ViewModelBase
     {
-        private readonly ObservableCollection<string> logRecords;
-        private string logFilePath;
-        private int selectedIndex;
-        private string leftPane;
+        private string _logFilePath;
+        private int _selectedIndex;
+        private bool _render;
+        private bool _unescape;
+        private CancellationTokenSource _ctsLoadLogFile;
 
         public MainWindowViewModel()
         {
-            logRecords = new ObservableCollection<string>();
-            SelectedIndex = 0;
+            LogRecords = new ObservableCollection<LogRecord>();
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
-            ClearCommand = new DelegateCommand(Clear, () => !string.IsNullOrEmpty(LogFilePath));
-            LogFilePath = Settings.Default.LogFilePath;
-        }
+            ClearCommand = new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
+            CopyCommand = new DelegateCommand<string>(Copy, CanCopy);
 
-        private void Clear()
-        {
-            LeftPane = string.Empty;
-            logRecords.Clear();
-            LogFilePath = string.Empty;
+            SelectedIndex = -1;
+            Render = Settings.Default.Render;
+            Unescape = Settings.Default.Unescape;
+            LogFilePath = Settings.Default.LogFilePath;
         }
 
         public ICommand OpenFileDialogCommand { get; }
 
         public ICommand ClearCommand { get; }
 
-        public IEnumerable<string> LogRecords => logRecords;
+        public ICommand CopyCommand { get; }
+
+        public ObservableCollection<LogRecord> LogRecords { get; }
+
+        public string RightPane => 0 <= SelectedIndex ? IndentJson(LogRecords[SelectedIndex].RowText) : string.Empty;
 
         public int SelectedIndex
         {
-            get => selectedIndex;
-            set
-            {
-                if (SetValue(ref selectedIndex, value))
-                {
-                    Settings.Default.LogFilePath = LogFilePath;
-                    if (0 <= selectedIndex)
-                    {
-                        LeftPane = FormatJson(logRecords[selectedIndex]);
-                    }
-                }
-            }
+            get => _selectedIndex;
+            set => SetValue(ref _selectedIndex, value, () => RaisePropertiesChanged(nameof(RightPane)));
+        }
+
+        public bool Render
+        {
+            get => _render;
+            set => SetValue(ref _render, value, () => LogRecords.ForEach(x => x.Render = Render));
+        }
+
+        public bool Unescape
+        {
+            get => _unescape;
+            set => SetValue(ref _unescape, value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public string LogFilePath
         {
-            get => logFilePath;
+            get => _logFilePath;
             set
             {
-                if (SetValue(ref logFilePath, value))
+                async void ChangedCallback()
                 {
-                    logRecords.Clear();
-                    if (string.IsNullOrEmpty(logFilePath))
+                    _ctsLoadLogFile?.Cancel();
+                    var newCts = new CancellationTokenSource();
+                    _ctsLoadLogFile = newCts;
+
+                    if (string.IsNullOrEmpty(_logFilePath) || !File.Exists(_logFilePath))
                     {
+                        LogRecords.Clear();
                         return;
                     }
 
-                    if (File.Exists(logFilePath))
+                    Settings.Default.LogFilePath = _logFilePath;
+                    try
                     {
-                        LoadLogFile();
-                        Settings.Default.LogFilePath = LogFilePath;
+                        await LoadLogFile(_ctsLoadLogFile.Token);
                     }
-                    else
+                    catch (OperationCanceledException)
                     {
-                        LeftPane = "Error: file does not exist.";
+                        LogRecords.Clear();
+                    }
+                    finally
+                    {
+                        if (newCts == _ctsLoadLogFile)
+                        {
+                            _ctsLoadLogFile = null;
+                        }
                     }
                 }
+
+                SetValue(ref _logFilePath, value, ChangedCallback);
             }
         }
 
-        public string LeftPane
+        private void Copy(string obj)
         {
-            get => leftPane;
-            set => SetValue(ref leftPane, value);
+            if (obj == "LeftPane")
+            {
+                Clipboard.SetText(LogRecords[SelectedIndex].DisplayText);
+            }
         }
 
-        private string FormatJson(string logRecord)
+        private bool CanCopy(string arg)
+        {
+            return arg == "LeftPane" && 0 < SelectedIndex;
+        }
+
+        private string IndentJson(string logRecord)
         {
             try
             {
-                return JObject.Parse(logRecord).ToString(Formatting.Indented);
+                var formatJson = JObject.Parse(logRecord).ToString(Formatting.Indented);
+                return Unescape ? Regex.Unescape(formatJson) : formatJson;
             }
             catch (JsonReaderException)
             {
@@ -104,20 +132,25 @@ namespace ClefViewer
             }
         }
 
-        private async void LoadLogFile()
+        private async Task LoadLogFile(CancellationToken token)
         {
             using (var reader = File.OpenText(LogFilePath))
             {
                 string line;
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
-                    logRecords.Add(line);
+                    token.ThrowIfCancellationRequested();
+                    line = line.Trim();
+                    if (!string.IsNullOrEmpty(line))
+                    {
+                        LogRecords.Add(new LogRecord(line, Render));
+                    }
                 }
             }
 
-            if (0 < logRecords.Count)
+            if (0 < LogRecords.Count)
             {
-                SelectedIndex = logRecords.Count - 1;
+                SelectedIndex = LogRecords.Count - 1;
             }
         }
 

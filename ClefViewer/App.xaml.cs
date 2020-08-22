@@ -1,11 +1,6 @@
-﻿using ClefViewer.Properties;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Configuration;
 using System.Windows;
+using ClefViewer.Properties;
 
 namespace ClefViewer
 {
@@ -16,7 +11,21 @@ namespace ClefViewer
     {
         private void Application_Exit(object sender, ExitEventArgs e)
         {
-            Settings.Default.Save();
+            retry:
+            try
+            {
+                Settings.Default.Save();
+            }
+            catch (ConfigurationErrorsException exception)
+            {
+                var messageBoxResult = MessageBox.Show(
+                    $"{exception.GetBaseException().Message} Retry?",
+                    Settings.Default.AppName, MessageBoxButton.YesNo);
+                if (messageBoxResult == MessageBoxResult.Yes)
+                {
+                    goto retry;
+                }
+            }
         }
     }
 }
