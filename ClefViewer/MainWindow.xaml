@@ -11,12 +11,14 @@
         Title="{Binding AppName, Source={x:Static p:Settings.Default}, Mode=OneWay}"
         Height="{Binding MainWindowHeight, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
         Width="{Binding MainWindowWidth, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
+        Closed="MainWindow_OnClosed"
         d:DesignHeight="400" d:DesignWidth="800">
     <Window.DataContext>
         <clefViewer:MainWindowViewModel />
     </Window.DataContext>
     <dxmvvm:Interaction.Behaviors>
         <dxmvvm:OpenFileDialogService />
+        <dxmvvm:DispatcherService/>
     </dxmvvm:Interaction.Behaviors>
     <Grid>
         <Grid.ColumnDefinitions>

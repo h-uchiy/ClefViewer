@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace ClefViewer
@@ -31,6 +32,14 @@ namespace ClefViewer
             }
             
             e.Handled = true;
+        }
+
+        private void MainWindow_OnClosed(object sender, EventArgs e)
+        {
+            if(DataContext is IDisposable viewModel)
+            {
+                viewModel.Dispose();
+            }
         }
     }
 }

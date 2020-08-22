@@ -14,8 +14,9 @@ using Newtonsoft.Json.Linq;
 
 namespace ClefViewer
 {
-    public class MainWindowViewModel : ViewModelBase
+    public class MainWindowViewModel : ViewModelBase, IDisposable
     {
+        private readonly FileSystemWatcher _logFileWatcher;
         private string _logFilePath;
         private int _selectedIndex;
         private bool _render;
@@ -24,6 +25,7 @@ namespace ClefViewer
 
         public MainWindowViewModel()
         {
+            _logFileWatcher = new FileSystemWatcher();
             LogRecords = new ObservableCollection<LogRecord>();
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
             ClearCommand = new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
@@ -68,37 +70,63 @@ namespace ClefViewer
             get => _logFilePath;
             set
             {
-                async void ChangedCallback()
+                SetValue(ref _logFilePath, value, () =>
                 {
-                    _ctsLoadLogFile?.Cancel();
-                    var newCts = new CancellationTokenSource();
-                    _ctsLoadLogFile = newCts;
+                    LoadLogFile();
+                });
+            }
+        }
 
-                    if (string.IsNullOrEmpty(_logFilePath) || !File.Exists(_logFilePath))
-                    {
-                        LogRecords.Clear();
-                        return;
-                    }
+        void IDisposable.Dispose()
+        {
+            _ctsLoadLogFile?.Dispose();
+            _logFileWatcher?.Dispose();
+        }
 
-                    Settings.Default.LogFilePath = _logFilePath;
-                    try
-                    {
-                        await LoadLogFile(_ctsLoadLogFile.Token);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        LogRecords.Clear();
-                    }
-                    finally
-                    {
-                        if (newCts == _ctsLoadLogFile)
-                        {
-                            _ctsLoadLogFile = null;
-                        }
-                    }
+        private async void LoadLogFile()
+        {
+            _ctsLoadLogFile?.Cancel();
+            var newCts = new CancellationTokenSource();
+            _ctsLoadLogFile = newCts;
+
+            if (string.IsNullOrEmpty(_logFilePath) || !File.Exists(_logFilePath))
+            {
+                _logFileWatcher.EnableRaisingEvents = false;
+                LogRecords.Clear();
+                return;
+            }
+
+            _logFileWatcher.Path = Path.GetDirectoryName(_logFilePath);
+            _logFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+            _logFileWatcher.Changed += LogFileWatcherOnChanged;
+            _logFileWatcher.EnableRaisingEvents = true;
+            Settings.Default.LogFilePath = _logFilePath;
+            try
+            {
+                await LoadLogLines(_ctsLoadLogFile.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                LogRecords.Clear();
+            }
+            finally
+            {
+                if (newCts == _ctsLoadLogFile)
+                {
+                    _ctsLoadLogFile = null;
                 }
+            }
+        }
 
-                SetValue(ref _logFilePath, value, ChangedCallback);
+        private void LogFileWatcherOnChanged(object sender, FileSystemEventArgs e)
+        {
+            if (e.ChangeType == WatcherChangeTypes.Changed && e.Name == Path.GetFileName(LogFilePath))
+            {
+                GetService<IDispatcherService>()?.BeginInvoke(() =>
+                {
+                    LogRecords.Clear();
+                    LoadLogFile();
+                });
             }
         }
 
@@ -132,7 +160,7 @@ namespace ClefViewer
             }
         }
 
-        private async Task LoadLogFile(CancellationToken token)
+        private async Task LoadLogLines(CancellationToken token)
         {
             using (var reader = File.OpenText(LogFilePath))
             {
