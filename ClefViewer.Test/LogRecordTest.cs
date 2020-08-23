@@ -20,7 +20,7 @@ namespace ClefViewer.Test
             logRecord.Render = false;
             Assert.That(logRecord.DisplayText, Is.EqualTo(rowLine));
         }
-        
+
         [Test]
         public void TestRender2()
         {

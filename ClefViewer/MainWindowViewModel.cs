@@ -1,14 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
+using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
-using ClefViewer.Properties;
 using DevExpress.Mvvm;
 using DevExpress.Mvvm.Native;
 using Newtonsoft.Json;
@@ -18,25 +15,22 @@ namespace ClefViewer
 {
     public class MainWindowViewModel : ViewModelBase, IDisposable
     {
-        private readonly FileSystemWatcher _logFileWatcher;
-        private string _logFilePath;
+        private readonly ObservableCollection<LogRecord> _logRecords;
+        private readonly LogFile _logFile;
         private int _selectedIndex;
-        private bool _render;
         private bool _unescape;
-        private CancellationTokenSource _ctsLoadLogFile;
 
         public MainWindowViewModel()
         {
-            _logFileWatcher = new FileSystemWatcher();
-            LogRecords = new ObservableCollection<LogRecord>();
+            _logFile = new LogFile(ReloadFile);
+            _logRecords = new ObservableCollection<LogRecord>();
+            LogRecords = CollectionViewSource.GetDefaultView(_logRecords);
+
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
             ClearCommand = new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
             CopyCommand = new DelegateCommand<string>(Copy, CanCopy);
 
             SelectedIndex = -1;
-            Render = Settings.Default.Render;
-            Unescape = Settings.Default.Unescape;
-            LogFilePath = Settings.Default.LogFilePath;
         }
 
         public ICommand OpenFileDialogCommand { get; }
@@ -45,9 +39,9 @@ namespace ClefViewer
 
         public ICommand CopyCommand { get; }
 
-        public ObservableCollection<LogRecord> LogRecords { get; }
+        public ICollectionView LogRecords { get; }
 
-        public string RightPane => 0 <= SelectedIndex ? IndentJson(LogRecords.Skip(SelectedIndex).First().RowText) : string.Empty;
+        public string RightPane => 0 <= SelectedIndex ? IndentJson(_logRecords.Skip(SelectedIndex).First().RowText) : string.Empty;
 
         public int SelectedIndex
         {
@@ -57,8 +51,16 @@ namespace ClefViewer
 
         public bool Render
         {
-            get => _render;
-            set => SetValue(ref _render, value, () => LogRecords.ForEach(x => x.Render = Render));
+            get => _logFile.Render;
+            set
+            {
+                if (!Equals(_logFile.Render, value))
+                {
+                    _logFile.Render = value;
+                    RaisePropertiesChanged(nameof(Render));
+                    _logRecords.ForEach(x => x.Render = Render);
+                }
+            }
         }
 
         public bool Unescape
@@ -69,100 +71,30 @@ namespace ClefViewer
 
         public string LogFilePath
         {
-            get => _logFilePath;
-            set => SetValue(ref _logFilePath, value, LoadLogFile);
+            get => _logFile.FilePath;
+            set
+            {
+                if (!Equals(_logFile.FilePath, value))
+                {
+                    _logFile.FilePath = value;
+                    RaisePropertiesChanged(nameof(LogFilePath));
+                    ReloadFile();
+                }
+            }
         }
 
         void IDisposable.Dispose()
         {
-            _ctsLoadLogFile?.Cancel();
-            _ctsLoadLogFile?.Dispose();
-            _logFileWatcher?.Dispose();
+            _logFile.Dispose();
         }
 
-        private async void LoadLogFile()
+        private async void ReloadFile()
         {
-            _ctsLoadLogFile?.Cancel();
-            var newCts = new CancellationTokenSource();
-            _ctsLoadLogFile = newCts;
-
-            if (string.IsNullOrEmpty(_logFilePath) || !File.Exists(_logFilePath))
+            var dispatcherService = GetService<IDispatcherService>();
+            await _logFile.LoadLogFile(dispatcherService, _logRecords);
+            if (0 < _logRecords.Count)
             {
-                _logFileWatcher.EnableRaisingEvents = false;
-                LogRecords.Clear();
-                return;
-            }
-
-            _logFileWatcher.Path = Path.GetDirectoryName(_logFilePath);
-            _logFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
-            _logFileWatcher.Changed += LogFileWatcherOnChanged;
-            _logFileWatcher.EnableRaisingEvents = true;
-            Settings.Default.LogFilePath = _logFilePath;
-            try
-            {
-                var token = _ctsLoadLogFile.Token;
-                var parallelQuery = File.ReadLines(LogFilePath)
-                    .AsParallel()
-                    .AsOrdered()
-                    .WithCancellation(token)
-                    .Where(line => !string.IsNullOrWhiteSpace(line))
-                    .Select(line => new LogRecord(line, Render));
-                var dispatcher = GetService<IDispatcherService>();
-                if(dispatcher == null)
-                {
-                    // called from constructor
-                    foreach (var logRecord in parallelQuery)
-                    {
-                        token.ThrowIfCancellationRequested();
-                        LogRecords.Add(logRecord);
-                    }
-                }
-                else
-                {
-                    await Task.Run(async () =>
-                    {
-                        foreach (var logRecord in parallelQuery)
-                        {
-                            token.ThrowIfCancellationRequested();
-                            await dispatcher.BeginInvoke(() =>
-                            {
-                                if (!token.IsCancellationRequested)
-                                {
-                                    LogRecords.Add(logRecord);
-                                }
-                            });
-                        }
-                    }, token);
-                }
-
-                if (0 < LogRecords.Count)
-                {
-                    SelectedIndex = LogRecords.Count - 1;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                LogRecords.Clear();
-            }
-            finally
-            {
-                if (newCts == _ctsLoadLogFile)
-                {
-                    _ctsLoadLogFile = null;
-                }
-            }
-        }
-
-        private void LogFileWatcherOnChanged(object sender, FileSystemEventArgs e)
-        {
-            if (e.ChangeType == WatcherChangeTypes.Changed && e.Name == Path.GetFileName(LogFilePath))
-            {
-                GetService<IDispatcherService>()
-                    ?.BeginInvoke(() =>
-                    {
-                        LogRecords.Clear();
-                        LoadLogFile();
-                    });
+                SelectedIndex = _logRecords.Count - 1;
             }
         }
 
@@ -170,7 +102,7 @@ namespace ClefViewer
         {
             if (obj == "LeftPane")
             {
-                var logRecord = LogRecords.Skip(SelectedIndex).FirstOrDefault();
+                var logRecord = _logRecords.Skip(SelectedIndex).FirstOrDefault();
                 if (logRecord != null)
                 {
                     Clipboard.SetText(logRecord.DisplayText);

@@ -1,6 +1,8 @@
 ﻿using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using ClefViewer.Properties;
 
 namespace ClefViewer
 {
@@ -21,8 +23,8 @@ namespace ClefViewer
                 return;
             }
 
-            // Show selected row
-            if(0 < listBox.SelectedItems.Count)
+            // Show selected row when selected row was changed from view model
+            if (0 < listBox.SelectedItems.Count)
             {
                 var selectedItem = listBox.SelectedItems[0];
                 if (selectedItem != null)
@@ -30,15 +32,36 @@ namespace ClefViewer
                     listBox.ScrollIntoView(selectedItem);
                 }
             }
-            
+
             e.Handled = true;
+        }
+
+        private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.Render = Settings.Default.Render;
+                viewModel.Unescape = Settings.Default.Unescape;
+                viewModel.LogFilePath = Settings.Default.LogFilePath;
+            }
         }
 
         private void MainWindow_OnClosed(object sender, EventArgs e)
         {
-            if(DataContext is IDisposable viewModel)
+            if (DataContext is MainWindowViewModel viewModel)
             {
-                viewModel.Dispose();
+                Settings.Default.Render = viewModel.Render;
+                Settings.Default.Unescape = viewModel.Unescape;
+                if (string.IsNullOrEmpty(viewModel.LogFilePath) || File.Exists(viewModel.LogFilePath))
+                {
+                    Settings.Default.LogFilePath = viewModel.LogFilePath;
+                }
+            }
+
+            // Dispose view model
+            if (DataContext is IDisposable disposable)
+            {
+                disposable.Dispose();
             }
         }
     }
