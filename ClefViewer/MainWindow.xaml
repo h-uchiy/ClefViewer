@@ -42,7 +42,8 @@
             <ListBox Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecords}"
                      SelectedIndex="{Binding SelectedIndex}"
                      SelectionChanged="Selector_OnSelectionChanged"
-                     VirtualizingStackPanel.VirtualizationMode="Recycling">
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling">
                 <dxmvvm:Interaction.Behaviors>
                     <dxmvvm:KeyToCommand KeyGesture="CTRL+C" Command="{Binding CopyCommand}"
                                          CommandParameter="LeftPane" />

@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,7 +47,7 @@ namespace ClefViewer
 
         public ObservableCollection<LogRecord> LogRecords { get; }
 
-        public string RightPane => 0 <= SelectedIndex ? IndentJson(LogRecords[SelectedIndex].RowText) : string.Empty;
+        public string RightPane => 0 <= SelectedIndex ? IndentJson(LogRecords.Skip(SelectedIndex).First().RowText) : string.Empty;
 
         public int SelectedIndex
         {
@@ -68,17 +70,12 @@ namespace ClefViewer
         public string LogFilePath
         {
             get => _logFilePath;
-            set
-            {
-                SetValue(ref _logFilePath, value, () =>
-                {
-                    LoadLogFile();
-                });
-            }
+            set => SetValue(ref _logFilePath, value, LoadLogFile);
         }
 
         void IDisposable.Dispose()
         {
+            _ctsLoadLogFile?.Cancel();
             _ctsLoadLogFile?.Dispose();
             _logFileWatcher?.Dispose();
         }
@@ -103,7 +100,45 @@ namespace ClefViewer
             Settings.Default.LogFilePath = _logFilePath;
             try
             {
-                await LoadLogLines(_ctsLoadLogFile.Token);
+                var token = _ctsLoadLogFile.Token;
+                var parallelQuery = File.ReadLines(LogFilePath)
+                    .AsParallel()
+                    .AsOrdered()
+                    .WithCancellation(token)
+                    .Where(line => !string.IsNullOrWhiteSpace(line))
+                    .Select(line => new LogRecord(line, Render));
+                var dispatcher = GetService<IDispatcherService>();
+                if(dispatcher == null)
+                {
+                    // called from constructor
+                    foreach (var logRecord in parallelQuery)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        LogRecords.Add(logRecord);
+                    }
+                }
+                else
+                {
+                    await Task.Run(async () =>
+                    {
+                        foreach (var logRecord in parallelQuery)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            await dispatcher.BeginInvoke(() =>
+                            {
+                                if (!token.IsCancellationRequested)
+                                {
+                                    LogRecords.Add(logRecord);
+                                }
+                            });
+                        }
+                    }, token);
+                }
+
+                if (0 < LogRecords.Count)
+                {
+                    SelectedIndex = LogRecords.Count - 1;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -122,11 +157,12 @@ namespace ClefViewer
         {
             if (e.ChangeType == WatcherChangeTypes.Changed && e.Name == Path.GetFileName(LogFilePath))
             {
-                GetService<IDispatcherService>()?.BeginInvoke(() =>
-                {
-                    LogRecords.Clear();
-                    LoadLogFile();
-                });
+                GetService<IDispatcherService>()
+                    ?.BeginInvoke(() =>
+                    {
+                        LogRecords.Clear();
+                        LoadLogFile();
+                    });
             }
         }
 
@@ -134,7 +170,11 @@ namespace ClefViewer
         {
             if (obj == "LeftPane")
             {
-                Clipboard.SetText(LogRecords[SelectedIndex].DisplayText);
+                var logRecord = LogRecords.Skip(SelectedIndex).FirstOrDefault();
+                if (logRecord != null)
+                {
+                    Clipboard.SetText(logRecord.DisplayText);
+                }
             }
         }
 
@@ -157,28 +197,6 @@ namespace ClefViewer
             catch (Exception e)
             {
                 return e.ToString();
-            }
-        }
-
-        private async Task LoadLogLines(CancellationToken token)
-        {
-            using (var reader = File.OpenText(LogFilePath))
-            {
-                string line;
-                while ((line = await reader.ReadLineAsync()) != null)
-                {
-                    token.ThrowIfCancellationRequested();
-                    line = line.Trim();
-                    if (!string.IsNullOrEmpty(line))
-                    {
-                        LogRecords.Add(new LogRecord(line, Render));
-                    }
-                }
-            }
-
-            if (0 < LogRecords.Count)
-            {
-                SelectedIndex = LogRecords.Count - 1;
             }
         }
 
