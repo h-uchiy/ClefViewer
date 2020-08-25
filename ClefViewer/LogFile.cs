@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DevExpress.Mvvm;
@@ -63,7 +64,7 @@ namespace ClefViewer
             try
             {
                 var token = _ctsLoadLogFile.Token;
-                var parallelQuery = File.ReadLines(FilePath)
+                var parallelQuery = ReadLines(FilePath)
                     .AsParallel()
                     .AsOrdered()
                     .WithCancellation(token)
@@ -94,6 +95,32 @@ namespace ClefViewer
                 {
                     _ctsLoadLogFile = null;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Same as <see cref="File.ReadLines(string)" />, but can open file that log writer process still opens it.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        private static IEnumerable<string> ReadLines(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
+
+            if (!File.Exists(path))
+            {
+                throw new InvalidOperationException($"file {path} does not exist.");
+            }
+
+            using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var streamReader = new StreamReader(fileStream, Encoding.UTF8);
+            string line;
+            while ((line = streamReader.ReadLine()) != null)
+            {
+                yield return line;
             }
         }
 
