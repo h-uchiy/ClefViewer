@@ -42,6 +42,7 @@ namespace ClefViewer
             {
                 viewModel.Render = Settings.Default.Render;
                 viewModel.Unescape = Settings.Default.Unescape;
+                viewModel.Unwrap = Settings.Default.Unwrap;
                 viewModel.LogFilePath = Settings.Default.LogFilePath;
             }
         }
@@ -52,6 +53,7 @@ namespace ClefViewer
             {
                 Settings.Default.Render = viewModel.Render;
                 Settings.Default.Unescape = viewModel.Unescape;
+                Settings.Default.Unwrap = viewModel.Unwrap;
                 if (string.IsNullOrEmpty(viewModel.LogFilePath) || File.Exists(viewModel.LogFilePath))
                 {
                     Settings.Default.LogFilePath = viewModel.LogFilePath;

@@ -130,5 +130,17 @@ namespace ClefViewer.Properties {
                 this["AppName"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool Unwrap {
+            get {
+                return ((bool)(this["Unwrap"]));
+            }
+            set {
+                this["Unwrap"] = value;
+            }
+        }
     }
 }

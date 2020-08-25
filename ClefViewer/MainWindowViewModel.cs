@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -19,6 +20,7 @@ namespace ClefViewer
         private readonly LogFile _logFile;
         private int _selectedIndex;
         private bool _unescape;
+        private bool _unwrap;
 
         public MainWindowViewModel()
         {
@@ -58,7 +60,7 @@ namespace ClefViewer
                 {
                     _logFile.Render = value;
                     RaisePropertiesChanged(nameof(Render));
-                    _logRecords.ForEach(x => x.Render = Render);
+                    LinqExtensions.ForEach(_logRecords, x => x.Render = Render);
                 }
             }
         }
@@ -67,6 +69,12 @@ namespace ClefViewer
         {
             get => _unescape;
             set => SetValue(ref _unescape, value, () => RaisePropertiesChanged(nameof(RightPane)));
+        }
+
+        public bool Unwrap
+        {
+            get => _unwrap;
+            set => SetValue(ref _unwrap, value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public string LogFilePath
@@ -88,10 +96,40 @@ namespace ClefViewer
             _logFile.Dispose();
         }
 
+        /// <summary>
+        /// Retrieve stringified JSON property values.
+        /// </summary>
+        /// <param name="jDocument"></param>
+        private static void UnwrapJValue(JObject jDocument)
+        {
+            foreach (var jProperty in jDocument.Flatten<JToken>(x => x.Children()).OfType<JProperty>())
+            {
+                var jValue = jProperty.Value;
+                if (jValue.Type == JTokenType.String)
+                {
+                    var value = jValue.ToString();
+                    if (value.StartsWith('{') && value.EndsWith('}'))
+                    {
+                        jProperty.Value = JObject.Parse(value);
+                    }
+                }
+            }
+        }
+
         private async void ReloadFile()
         {
             var dispatcherService = GetService<IDispatcherService>();
-            await _logFile.LoadLogFile(dispatcherService, _logRecords);
+            try
+            {
+                await _logFile.LoadLogFile(dispatcherService, _logRecords);
+            }
+            catch (IOException e)
+            {
+                // cannot open file
+                MessageBox.Show(e.GetBaseException().Message);
+                return;
+            }
+
             if (0 < _logRecords.Count)
             {
                 SelectedIndex = _logRecords.Count - 1;
@@ -119,7 +157,13 @@ namespace ClefViewer
         {
             try
             {
-                var formatJson = JObject.Parse(logRecord).ToString(Formatting.Indented);
+                var jDocument = JObject.Parse(logRecord);
+                if (Unwrap)
+                {
+                    UnwrapJValue(jDocument);
+                }
+
+                var formatJson = jDocument.ToString(Formatting.Indented);
                 return Unescape ? Regex.Unescape(formatJson) : formatJson;
             }
             catch (JsonReaderException)
