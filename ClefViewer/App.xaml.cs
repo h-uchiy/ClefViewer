@@ -1,4 +1,6 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
+using System.Threading.Tasks;
 using System.Windows;
 using ClefViewer.Properties;
 
@@ -9,6 +11,25 @@ namespace ClefViewer
     /// </summary>
     public partial class App : Application
     {
+        private void App_OnStartup(object sender, StartupEventArgs e)
+        {
+            DispatcherUnhandledException += (sender, args) =>
+            {
+                // TODO: Write to Serilog
+                Console.Error.WriteLine(args.Exception);
+            };
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                // TODO: Write to Serilog
+                Console.Error.WriteLine(args.ExceptionObject);
+            };
+            TaskScheduler.UnobservedTaskException += (sender, args) =>
+            {
+                // TODO: Write to Serilog
+                Console.Error.WriteLine(args.Exception);
+            };
+        }
+
         private void Application_Exit(object sender, ExitEventArgs e)
         {
             retry:
