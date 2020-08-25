@@ -61,18 +61,6 @@ namespace ClefViewer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string RightPaneWidth {
-            get {
-                return ((string)(this["RightPaneWidth"]));
-            }
-            set {
-                this["RightPaneWidth"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("432")]
         public string LeftPaneWidth {
             get {
@@ -80,18 +68,6 @@ namespace ClefViewer.Properties {
             }
             set {
                 this["LeftPaneWidth"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:l}")]
-        public string RenderTemplate {
-            get {
-                return ((string)(this["RenderTemplate"]));
-            }
-            set {
-                this["RenderTemplate"] = value;
             }
         }
         
@@ -140,6 +116,42 @@ namespace ClefViewer.Properties {
             }
             set {
                 this["Unwrap"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("10")]
+        public double NumberWidth {
+            get {
+                return ((double)(this["NumberWidth"]));
+            }
+            set {
+                this["NumberWidth"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("10")]
+        public double TimestampWidth {
+            get {
+                return ((double)(this["TimestampWidth"]));
+            }
+            set {
+                this["TimestampWidth"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("10")]
+        public double ErrorLevelWidth {
+            get {
+                return ((double)(this["ErrorLevelWidth"]));
+            }
+            set {
+                this["ErrorLevelWidth"] = value;
             }
         }
     }

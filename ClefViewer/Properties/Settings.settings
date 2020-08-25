@@ -11,14 +11,8 @@
     <Setting Name="MainWindowHeight" Type="System.Double" Scope="User">
       <Value Profile="(Default)">400</Value>
     </Setting>
-    <Setting Name="RightPaneWidth" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
     <Setting Name="LeftPaneWidth" Type="System.String" Scope="User">
       <Value Profile="(Default)">432</Value>
-    </Setting>
-    <Setting Name="RenderTemplate" Type="System.String" Scope="User">
-      <Value Profile="(Default)">{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:l}</Value>
     </Setting>
     <Setting Name="Render" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
@@ -31,6 +25,15 @@
     </Setting>
     <Setting Name="Unwrap" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="NumberWidth" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">10</Value>
+    </Setting>
+    <Setting Name="TimestampWidth" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">10</Value>
+    </Setting>
+    <Setting Name="ErrorLevelWidth" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">10</Value>
     </Setting>
   </Settings>
 </SettingsFile>

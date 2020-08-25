@@ -11,19 +11,19 @@ namespace ClefViewer
 {
     public class LogFile : IDisposable
     {
+        private readonly MainWindowViewModel _outer;
         private readonly Action _onFileChanged;
         private readonly FileSystemWatcher _logFileWatcher;
         private CancellationTokenSource _ctsLoadLogFile;
 
-        public LogFile(Action onFileChanged)
+        public LogFile(MainWindowViewModel outer, Action onFileChanged)
         {
-            _logFileWatcher = new FileSystemWatcher();
+            _outer = outer;
             _onFileChanged = onFileChanged;
+            _logFileWatcher = new FileSystemWatcher();
         }
 
-        public string FilePath { get; set; }
-
-        public bool Render { get; set; }
+        private string FilePath => _outer.LogFilePath;
 
         public void Dispose()
         {
@@ -32,7 +32,7 @@ namespace ClefViewer
             _logFileWatcher?.Dispose();
         }
 
-        public async Task LoadLogFile(IDispatcherService dispatcher, ICollection<LogRecord> logRecords)
+        public async Task LoadLogFile(MainWindowViewModel viewModel, IDispatcherService dispatcher, ICollection<LogRecord> logRecords)
         {
             if (dispatcher == null)
             {
@@ -69,7 +69,7 @@ namespace ClefViewer
                     .AsOrdered()
                     .WithCancellation(token)
                     .Where(line => !string.IsNullOrWhiteSpace(line))
-                    .Select(line => new LogRecord(line, Render));
+                    .Select((line, idx) => new LogRecord(viewModel, line, idx + 1));
                 await Task.Run(async () =>
                 {
                     foreach (var logRecord in parallelQuery)

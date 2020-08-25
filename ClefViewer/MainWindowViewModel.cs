@@ -1,11 +1,9 @@
 using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
-using System.Windows.Data;
 using System.Windows.Input;
 using DevExpress.Mvvm;
 using DevExpress.Mvvm.Native;
@@ -16,17 +14,18 @@ namespace ClefViewer
 {
     public class MainWindowViewModel : ViewModelBase, IDisposable
     {
-        private readonly ObservableCollection<LogRecord> _logRecords;
         private readonly LogFile _logFile;
         private int _selectedIndex;
         private bool _unescape;
         private bool _unwrap;
+        private bool _utc;
+        private bool _render;
+        private string _logFilePath;
 
         public MainWindowViewModel()
         {
-            _logFile = new LogFile(ReloadFile);
-            _logRecords = new ObservableCollection<LogRecord>();
-            LogRecords = CollectionViewSource.GetDefaultView(_logRecords);
+            LogRecords = new ObservableCollection<LogRecord>();
+            _logFile = new LogFile(this, ReloadFile);
 
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
             ClearCommand = new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
@@ -41,9 +40,9 @@ namespace ClefViewer
 
         public ICommand CopyCommand { get; }
 
-        public ICollectionView LogRecords { get; }
+        public ObservableCollection<LogRecord> LogRecords { get; }
 
-        public string RightPane => 0 <= SelectedIndex ? IndentJson(_logRecords.Skip(SelectedIndex).First().RowText) : string.Empty;
+        public string RightPane => 0 <= SelectedIndex ? IndentJson(LogRecords.Skip(SelectedIndex).First().RowText) : string.Empty;
 
         public int SelectedIndex
         {
@@ -53,16 +52,14 @@ namespace ClefViewer
 
         public bool Render
         {
-            get => _logFile.Render;
-            set
-            {
-                if (!Equals(_logFile.Render, value))
-                {
-                    _logFile.Render = value;
-                    RaisePropertiesChanged(nameof(Render));
-                    LinqExtensions.ForEach(_logRecords, x => x.Render = Render);
-                }
-            }
+            get => _render;
+            set => SetValue(ref _render, value);
+        }
+
+        public bool UTC
+        {
+            get => _utc;
+            set => SetValue(ref _utc, value);
         }
 
         public bool Unescape
@@ -79,16 +76,8 @@ namespace ClefViewer
 
         public string LogFilePath
         {
-            get => _logFile.FilePath;
-            set
-            {
-                if (!Equals(_logFile.FilePath, value))
-                {
-                    _logFile.FilePath = value;
-                    RaisePropertiesChanged(nameof(LogFilePath));
-                    ReloadFile();
-                }
-            }
+            get => _logFilePath;
+            set => SetValue(ref _logFilePath, value, ReloadFile);
         }
 
         void IDisposable.Dispose()
@@ -121,7 +110,7 @@ namespace ClefViewer
             var dispatcherService = GetService<IDispatcherService>();
             try
             {
-                await _logFile.LoadLogFile(dispatcherService, _logRecords);
+                await _logFile.LoadLogFile(this, dispatcherService, LogRecords);
             }
             catch (IOException e)
             {
@@ -130,9 +119,9 @@ namespace ClefViewer
                 return;
             }
 
-            if (0 < _logRecords.Count)
+            if (0 < LogRecords.Count)
             {
-                SelectedIndex = _logRecords.Count - 1;
+                SelectedIndex = LogRecords.Count - 1;
             }
         }
 
@@ -140,7 +129,7 @@ namespace ClefViewer
         {
             if (obj == "LeftPane")
             {
-                var logRecord = _logRecords.Skip(SelectedIndex).FirstOrDefault();
+                var logRecord = LogRecords.Skip(SelectedIndex).FirstOrDefault();
                 if (logRecord != null)
                 {
                     Clipboard.SetText(logRecord.DisplayText);

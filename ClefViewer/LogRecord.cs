@@ -4,6 +4,7 @@ using ClefViewer.Properties;
 using DevExpress.Mvvm;
 using Newtonsoft.Json.Linq;
 using Serilog.Events;
+using Serilog.Formatting;
 using Serilog.Formatting.Compact.Reader;
 using Serilog.Formatting.Display;
 
@@ -11,42 +12,84 @@ namespace ClefViewer
 {
     public class LogRecord : ViewModelBase
     {
+        private const string _timeStampFormat = "yyyy-MM-dd HH:mm:ss.fff";
+        private static readonly ITextFormatter _levelFormatter = new MessageTemplateTextFormatter("{Level:u3}");
+        private static readonly ITextFormatter _messageFormatter = new MessageTemplateTextFormatter("{Message:l}");
+        private readonly MainWindowViewModel _outer;
         private LogEvent _logEvent;
-        private bool _render;
 
-        public LogRecord(string rowText, bool render)
+        public LogRecord(MainWindowViewModel outer, string rowText, int lineNumber)
         {
+            outer.PropertyChanged += (sender, args) =>
+            {
+                switch (args.PropertyName)
+                {
+                    case nameof(Render):
+                        RaisePropertiesChanged(nameof(Render));
+                        RaisePropertiesChanged(nameof(DisplayText));
+                        break;
+                    case nameof(UTC):
+                        RaisePropertiesChanged(nameof(UTC));
+                        RaisePropertiesChanged(nameof(Timestamp));
+                        break;
+                }
+            };
+            _outer = outer;
+            LineNumber = lineNumber;
             RowText = rowText.Trim();
-            Render = render;
         }
+
+        public int LineNumber { get; }
+
+        public string Timestamp => (UTC ? LogEvent.Timestamp.UtcDateTime : LogEvent.Timestamp.LocalDateTime).ToString(_timeStampFormat);
+
+        public string ErrorLevel => RenderMessage(_levelFormatter);
 
         public string RowText { get; }
 
-        public string DisplayText => (Render ? RenderMessage() : RowText).Replace(Environment.NewLine, " ");
+        public string DisplayText => (Render ? RenderMessage(_messageFormatter) : RowText).Replace(Environment.NewLine, " ");
 
-        public bool Render
+        public bool Render => _outer.Render;
+
+        public bool UTC => _outer.UTC;
+
+        public double LineNumberWidth
         {
-            get => _render;
-            set => SetValue(ref _render, value, () => RaisePropertiesChanged(nameof(DisplayText)));
+            get => Settings.Default.NumberWidth;
+            set => Settings.Default.NumberWidth = value;
         }
 
-        private LogEvent GetLogEvent()
+        public double TimestampWidth
         {
-            if (_logEvent != null)
+            get => Settings.Default.TimestampWidth;
+            set => Settings.Default.TimestampWidth = value;
+        }
+
+        public double ErrorLevelWidth
+        {
+            get => Settings.Default.ErrorLevelWidth;
+            set => Settings.Default.ErrorLevelWidth = value;
+        }
+
+        private LogEvent LogEvent
+        {
+            get
             {
+                if (_logEvent != null)
+                {
+                    return _logEvent;
+                }
+
+                var jObject = JObject.Parse(RowText);
+                _logEvent = LogEventReader.ReadFromJObject(jObject);
                 return _logEvent;
             }
-
-            var jObject = JObject.Parse(RowText);
-            _logEvent = LogEventReader.ReadFromJObject(jObject);
-            return _logEvent;
         }
 
-        private string RenderMessage()
+        private string RenderMessage(ITextFormatter formatter)
         {
-            var formatter = new MessageTemplateTextFormatter(Settings.Default.RenderTemplate);
             var stringWriter = new StringWriter();
-            formatter.Format(GetLogEvent(), stringWriter);
+            formatter.Format(LogEvent, stringWriter);
             return stringWriter.ToString().Trim();
         }
     }
