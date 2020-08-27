@@ -6,14 +6,13 @@
         xmlns:clefViewer="clr-namespace:ClefViewer"
         xmlns:p="clr-namespace:ClefViewer.Properties"
         xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
-        xmlns:system="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
         Title="{Binding AppName, Source={x:Static p:Settings.Default}, Mode=OneWay}"
         Height="{Binding MainWindowHeight, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
         Width="{Binding MainWindowWidth, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
         Loaded="MainWindow_OnLoaded"
         Closed="MainWindow_OnClosed"
-        d:DesignHeight="400" d:DesignWidth="800">
+        d:DesignHeight="300" d:DesignWidth="800">
     <Window.DataContext>
         <clefViewer:MainWindowViewModel />
     </Window.DataContext>
@@ -33,15 +32,16 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <StackPanel Grid.Row="0" Margin="2" Orientation="Horizontal" x:Name="LeftPaneToolbar">
-                <CheckBox Margin="2" VerticalAlignment="Center" Content="Render" IsChecked="{Binding Render}" />
                 <Label Margin="2,2,0,2" VerticalAlignment="Center" Content="Log file" />
-                <TextBox Margin="0,2,2,2" VerticalAlignment="Center" Text="{Binding LogFilePath}" Width="250"
-                         CaretIndex="{x:Static system:Int32.MaxValue}" />
+                <TextBox Margin="0,2,2,2" VerticalAlignment="Center" Text="{Binding LogFilePath}" Width="250" />
                 <Button Margin="2" Padding="2,0,2,0" Content="..." MinWidth="16"
                         Command="{Binding OpenFileDialogCommand}" />
                 <Button Margin="2" Content="Clear" MinWidth="16" Command="{Binding ClearCommand}" />
+                <Button Margin="2" Content="Reload" MinWidth="16" Command="{Binding ReloadCommand}" />
+                <CheckBox Margin="2" VerticalAlignment="Center" Content="Render" IsChecked="{Binding Render}" />
+                <CheckBox Margin="2" VerticalAlignment="Center" Content="Auto Reload" IsChecked="{Binding AutoReload}" />
             </StackPanel>
-            <ListView Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecords}"
+            <ListView Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecordsView}"
                       SelectedIndex="{Binding SelectedIndex}"
                       SelectionChanged="Selector_OnSelectionChanged"
                       VirtualizingPanel.IsVirtualizing="True"
@@ -52,29 +52,38 @@
                 </dxmvvm:Interaction.Behaviors>
                 <ListView.View>
                     <GridView>
+                        <GridView.ColumnHeaderContextMenu>
+                            <ContextMenu />
+                        </GridView.ColumnHeaderContextMenu>
                         <GridViewColumn
-                            Width="{Binding LineNumberWidth}"
-                            Header="No." DisplayMemberBinding="{Binding LineNumber}" />
+                            Width="{Binding LineNumberWidth, Source={RelativeSource TemplatedParent}}"
+                            Header="Line No." DisplayMemberBinding="{Binding LineNumber}" />
                         <GridViewColumn
-                            Width="{Binding TimestampWidth}"
+                            Width="{Binding TimestampWidth, Source={RelativeSource TemplatedParent}}"
                             DisplayMemberBinding="{Binding Timestamp}">
                             <GridViewColumn.Header>
-                                <Grid>
+                                <Grid HorizontalAlignment="Stretch">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center"
                                                Text="Time" />
-                                    <CheckBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    <CheckBox Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"
                                               Content="UTC"
                                               IsChecked="{Binding UTC}" />
                                 </Grid>
                             </GridViewColumn.Header>
                         </GridViewColumn>
                         <GridViewColumn
-                            Width="{Binding ErrorLevelWidth}"
-                            Header="Level" DisplayMemberBinding="{Binding ErrorLevel}" />
+                            Width="{Binding ErrorLevelWidth, Source={RelativeSource TemplatedParent}}"
+                            DisplayMemberBinding="{Binding DisplayLevel}">
+                            <GridViewColumn.Header>
+                                <ComboBox ItemsSource="{Binding Levels}"
+                                          SelectedIndex="{Binding SelectedLevelIndex}" />
+                            </GridViewColumn.Header>
+                        </GridViewColumn>
                         <GridViewColumn
                             Header="Record">
                             <GridViewColumn.CellTemplate>

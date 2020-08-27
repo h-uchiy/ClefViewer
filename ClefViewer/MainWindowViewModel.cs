@@ -1,34 +1,49 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
+using ClefViewer.Properties;
 using DevExpress.Mvvm;
 using DevExpress.Mvvm.Native;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog.Events;
 
 namespace ClefViewer
 {
     public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         private readonly LogFile _logFile;
+
         private int _selectedIndex;
         private bool _unescape;
         private bool _unwrap;
         private bool _utc;
         private bool _render;
         private string _logFilePath;
+        private bool _autoReload;
+        private int _selectedLevelIndex = 0;
 
         public MainWindowViewModel()
         {
             LogRecords = new ObservableCollection<LogRecord>();
-            _logFile = new LogFile(this, ReloadFile);
+            LogRecordsView = (CollectionView)CollectionViewSource.GetDefaultView(LogRecords);
+            _logFile = new LogFile(this, () =>
+            {
+                if (AutoReload)
+                {
+                    ReloadFile();
+                }
+            });
 
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
             ClearCommand = new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
+            ReloadCommand = new DelegateCommand(ReloadFile, () => !string.IsNullOrEmpty(LogFilePath));
             CopyCommand = new DelegateCommand<string>(Copy, CanCopy);
 
             SelectedIndex = -1;
@@ -38,11 +53,15 @@ namespace ClefViewer
 
         public ICommand ClearCommand { get; }
 
+        public ICommand ReloadCommand { get; }
+
         public ICommand CopyCommand { get; }
 
-        public ObservableCollection<LogRecord> LogRecords { get; }
-
         public string RightPane => 0 <= SelectedIndex ? IndentJson(LogRecords.Skip(SelectedIndex).First().RowText) : string.Empty;
+
+        public IEnumerable<string> Levels => Enum.GetNames(typeof(LogEventLevel));
+
+        public CollectionView LogRecordsView { get; }
 
         public int SelectedIndex
         {
@@ -54,6 +73,12 @@ namespace ClefViewer
         {
             get => _render;
             set => SetValue(ref _render, value);
+        }
+
+        public bool AutoReload
+        {
+            get => _autoReload;
+            set => SetValue(ref _autoReload, value);
         }
 
         public bool UTC
@@ -80,6 +105,36 @@ namespace ClefViewer
             set => SetValue(ref _logFilePath, value, ReloadFile);
         }
 
+        public double LineNumberWidth
+        {
+            get => Settings.Default.NumberWidth;
+            set => Settings.Default.NumberWidth = value;
+        }
+
+        public double TimestampWidth
+        {
+            get => Settings.Default.TimestampWidth;
+            set => Settings.Default.TimestampWidth = value;
+        }
+
+        public double ErrorLevelWidth
+        {
+            get => Settings.Default.ErrorLevelWidth;
+            set => Settings.Default.ErrorLevelWidth = value;
+        }
+
+        public int SelectedLevelIndex
+        {
+            get => _selectedLevelIndex;
+            set => SetValue(ref _selectedLevelIndex, value, () =>
+            {
+                var selectedLevel = Enum.GetValues(typeof(LogEventLevel)).OfType<LogEventLevel>().ElementAt(value);
+                LogRecordsView.Filter = item => selectedLevel <= ((LogRecord)item).LogEvent.Level;
+            });
+        }
+
+        private ObservableCollection<LogRecord> LogRecords { get; }
+
         void IDisposable.Dispose()
         {
             _logFile.Dispose();
@@ -97,7 +152,7 @@ namespace ClefViewer
                 if (jValue.Type == JTokenType.String)
                 {
                     var value = jValue.ToString();
-                    if (value.StartsWith('{') && value.EndsWith('}'))
+                    if (value.StartsWith("{") && value.EndsWith("}"))
                     {
                         jProperty.Value = JObject.Parse(value);
                     }

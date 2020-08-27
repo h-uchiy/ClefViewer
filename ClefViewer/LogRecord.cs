@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using ClefViewer.Properties;
 using DevExpress.Mvvm;
 using Newtonsoft.Json.Linq;
 using Serilog.Events;
@@ -24,11 +23,11 @@ namespace ClefViewer
             {
                 switch (args.PropertyName)
                 {
-                    case nameof(Render):
+                    case nameof(outer.Render):
                         RaisePropertiesChanged(nameof(Render));
                         RaisePropertiesChanged(nameof(DisplayText));
                         break;
-                    case nameof(UTC):
+                    case nameof(outer.UTC):
                         RaisePropertiesChanged(nameof(UTC));
                         RaisePropertiesChanged(nameof(Timestamp));
                         break;
@@ -43,7 +42,7 @@ namespace ClefViewer
 
         public string Timestamp => (UTC ? LogEvent.Timestamp.UtcDateTime : LogEvent.Timestamp.LocalDateTime).ToString(_timeStampFormat);
 
-        public string ErrorLevel => RenderMessage(_levelFormatter);
+        public string DisplayLevel => RenderMessage(_levelFormatter);
 
         public string RowText { get; }
 
@@ -53,38 +52,7 @@ namespace ClefViewer
 
         public bool UTC => _outer.UTC;
 
-        public double LineNumberWidth
-        {
-            get => Settings.Default.NumberWidth;
-            set => Settings.Default.NumberWidth = value;
-        }
-
-        public double TimestampWidth
-        {
-            get => Settings.Default.TimestampWidth;
-            set => Settings.Default.TimestampWidth = value;
-        }
-
-        public double ErrorLevelWidth
-        {
-            get => Settings.Default.ErrorLevelWidth;
-            set => Settings.Default.ErrorLevelWidth = value;
-        }
-
-        private LogEvent LogEvent
-        {
-            get
-            {
-                if (_logEvent != null)
-                {
-                    return _logEvent;
-                }
-
-                var jObject = JObject.Parse(RowText);
-                _logEvent = LogEventReader.ReadFromJObject(jObject);
-                return _logEvent;
-            }
-        }
+        public LogEvent LogEvent => _logEvent ??= LogEventReader.ReadFromJObject(JObject.Parse(RowText));
 
         private string RenderMessage(ITextFormatter formatter)
         {
