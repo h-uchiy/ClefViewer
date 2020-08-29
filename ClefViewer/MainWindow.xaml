@@ -31,17 +31,20 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <StackPanel Grid.Row="0" Margin="2" Orientation="Horizontal" x:Name="LeftPaneToolbar">
-                <Label Margin="2,2,0,2" VerticalAlignment="Center" Content="Log file" />
-                <TextBox Margin="0,2,2,2" VerticalAlignment="Center" Text="{Binding LogFilePath}" Width="250" />
-                <Button Margin="2" Padding="2,0,2,0" Content="..." MinWidth="16"
-                        Command="{Binding OpenFileDialogCommand}" />
+            <WrapPanel Grid.Row="0" Margin="2" Orientation="Horizontal" x:Name="LeftPaneToolbar">
+                <StackPanel Orientation="Horizontal">
+                    <Label Margin="2,2,0,2" VerticalAlignment="Center" Content="Log file" />
+                    <TextBox Margin="0,2,2,2" VerticalAlignment="Center" Text="{Binding LogFilePath}" Width="250" />
+                    <Button Margin="2" Padding="5,0,5,0" Content="..." MinWidth="16"
+                            Command="{Binding OpenFileDialogCommand}" />
+                </StackPanel>
                 <Button Margin="2" Content="Clear" MinWidth="16" Command="{Binding ClearCommand}" />
                 <Button Margin="2" Content="Reload" MinWidth="16" Command="{Binding ReloadCommand}" />
                 <CheckBox Margin="2" VerticalAlignment="Center" Content="Render" IsChecked="{Binding Render}" />
                 <CheckBox Margin="2" VerticalAlignment="Center" Content="Auto Reload" IsChecked="{Binding AutoReload}" />
-            </StackPanel>
+            </WrapPanel>
             <ListView Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecordsView}"
+                      SelectedItem="{Binding SelectedItem}"
                       SelectedIndex="{Binding SelectedIndex}"
                       SelectionChanged="Selector_OnSelectionChanged"
                       VirtualizingPanel.IsVirtualizing="True"
@@ -72,7 +75,7 @@
                                                Text="Time" />
                                     <CheckBox Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"
                                               Content="UTC"
-                                              IsChecked="{Binding UTC}" />
+                                              IsChecked="{Binding ShowUTC}" />
                                 </Grid>
                             </GridViewColumn.Header>
                         </GridViewColumn>

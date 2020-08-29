@@ -23,11 +23,12 @@ namespace ClefViewer
         private int _selectedIndex;
         private bool _unescape;
         private bool _unwrap;
-        private bool _utc;
+        private bool _showUTC;
         private bool _render;
         private string _logFilePath;
         private bool _autoReload;
         private int _selectedLevelIndex = 0;
+        private LogRecord _selectedItem;
 
         public MainWindowViewModel()
         {
@@ -57,7 +58,7 @@ namespace ClefViewer
 
         public ICommand CopyCommand { get; }
 
-        public string RightPane => 0 <= SelectedIndex ? IndentJson(LogRecords.Skip(SelectedIndex).First().RowText) : string.Empty;
+        public string RightPane => SelectedItem != null ? IndentJson(SelectedItem.RowText) : string.Empty;
 
         public IEnumerable<string> Levels => Enum.GetNames(typeof(LogEventLevel));
 
@@ -67,6 +68,12 @@ namespace ClefViewer
         {
             get => _selectedIndex;
             set => SetValue(ref _selectedIndex, value, () => RaisePropertiesChanged(nameof(RightPane)));
+        }
+
+        public LogRecord SelectedItem
+        {
+            get => _selectedItem;
+            set => SetValue(ref _selectedItem, value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public bool Render
@@ -81,10 +88,10 @@ namespace ClefViewer
             set => SetValue(ref _autoReload, value);
         }
 
-        public bool UTC
+        public bool ShowUTC
         {
-            get => _utc;
-            set => SetValue(ref _utc, value);
+            get => _showUTC;
+            set => SetValue(ref _showUTC, value);
         }
 
         public bool Unescape
@@ -184,17 +191,16 @@ namespace ClefViewer
         {
             if (obj == "LeftPane")
             {
-                var logRecord = LogRecords.Skip(SelectedIndex).FirstOrDefault();
-                if (logRecord != null)
+                if (SelectedItem != null)
                 {
-                    Clipboard.SetText(logRecord.DisplayText);
+                    Clipboard.SetText(SelectedItem.DisplayText);
                 }
             }
         }
 
         private bool CanCopy(string arg)
         {
-            return arg == "LeftPane" && 0 < SelectedIndex;
+            return arg == "LeftPane" && SelectedItem != null;
         }
 
         private string IndentJson(string logRecord)

@@ -24,11 +24,9 @@ namespace ClefViewer
                 switch (args.PropertyName)
                 {
                     case nameof(outer.Render):
-                        RaisePropertiesChanged(nameof(Render));
                         RaisePropertiesChanged(nameof(DisplayText));
                         break;
-                    case nameof(outer.UTC):
-                        RaisePropertiesChanged(nameof(UTC));
+                    case nameof(outer.ShowUTC):
                         RaisePropertiesChanged(nameof(Timestamp));
                         break;
                 }
@@ -40,7 +38,7 @@ namespace ClefViewer
 
         public int LineNumber { get; }
 
-        public string Timestamp => (UTC ? LogEvent.Timestamp.UtcDateTime : LogEvent.Timestamp.LocalDateTime).ToString(_timeStampFormat);
+        public string Timestamp => (ShowUTC ? LogEvent.Timestamp.UtcDateTime : LogEvent.Timestamp.LocalDateTime).ToString(_timeStampFormat);
 
         public string DisplayLevel => RenderMessage(_levelFormatter);
 
@@ -48,9 +46,9 @@ namespace ClefViewer
 
         public string DisplayText => (Render ? RenderMessage(_messageFormatter) : RowText).Replace(Environment.NewLine, " ");
 
-        public bool Render => _outer.Render;
+        private bool Render => _outer.Render;
 
-        public bool UTC => _outer.UTC;
+        private bool ShowUTC => _outer.ShowUTC;
 
         public LogEvent LogEvent => _logEvent ??= LogEventReader.ReadFromJObject(JObject.Parse(RowText));
 
