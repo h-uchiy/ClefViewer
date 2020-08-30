@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Configuration;
+using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using ClefViewer.Properties;
+using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
 
 namespace ClefViewer
 {
@@ -13,39 +18,44 @@ namespace ClefViewer
     {
         private void App_OnStartup(object sender, StartupEventArgs e)
         {
-            DispatcherUnhandledException += (sender, args) =>
-            {
-                // TODO: Write to Serilog
-                Console.Error.WriteLine(args.Exception);
-            };
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-            {
-                // TODO: Write to Serilog
-                Console.Error.WriteLine(args.ExceptionObject);
-            };
-            TaskScheduler.UnobservedTaskException += (sender, args) =>
-            {
-                // TODO: Write to Serilog
-                Console.Error.WriteLine(args.Exception);
-            };
+            DispatcherUnhandledException += (obj, args) => Log.Fatal(args.Exception, "{@Dispatcher} UnhandledException", obj);
+            AppDomain.CurrentDomain.UnhandledException += (obj, args) => Log.Fatal(args.ExceptionObject as Exception, "{@AppDomain} UnhandledException", obj);
+            TaskScheduler.UnobservedTaskException += (obj, args) => Log.Fatal(args.Exception, "{@TaskScheduler} UnhandledException", obj);
+
+            var appName = Assembly.GetExecutingAssembly().GetName().Name;
+            var filePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                appName, $"{appName}.clef");
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Verbose()
+                .WriteTo.File(new CompactJsonFormatter(), filePath, LogEventLevel.Verbose, rollingInterval: RollingInterval.Day, buffered: true)
+                .CreateLogger();
+
+            Log.Information("Application start.");
         }
 
         private void Application_Exit(object sender, ExitEventArgs e)
         {
-            retry:
             try
             {
-                Settings.Default.Save();
-            }
-            catch (ConfigurationErrorsException exception)
-            {
-                var messageBoxResult = MessageBox.Show(
-                    $"{exception.GetBaseException().Message} Retry?",
-                    Settings.Default.AppName, MessageBoxButton.YesNo);
-                if (messageBoxResult == MessageBoxResult.Yes)
+                retry:
+                try
                 {
-                    goto retry;
+                    Settings.Default.Save();
                 }
+                catch (ConfigurationErrorsException exception)
+                {
+                    var messageBoxResult = MessageBox.Show($"{exception.GetBaseException().Message} Retry?", Settings.Default.AppName, MessageBoxButton.YesNo);
+                    if (messageBoxResult == MessageBoxResult.Yes)
+                    {
+                        goto retry;
+                    }
+                }
+            }
+            finally
+            {
+                Log.Information("Application exit with code {ExitCode}.", e.ApplicationExitCode);
+                Log.CloseAndFlush();
             }
         }
     }

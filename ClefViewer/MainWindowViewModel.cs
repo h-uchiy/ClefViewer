@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -25,22 +25,15 @@ namespace ClefViewer
         private bool _unwrap;
         private bool _showUTC;
         private bool _render;
-        private string _logFilePath;
         private bool _autoReload;
         private int _selectedLevelIndex = 0;
         private LogRecord _selectedItem;
+        private CollectionView _logRecordsView;
 
         public MainWindowViewModel()
         {
-            LogRecords = new ObservableCollection<LogRecord>();
-            LogRecordsView = (CollectionView)CollectionViewSource.GetDefaultView(LogRecords);
-            _logFile = new LogFile(this, () =>
-            {
-                if (AutoReload)
-                {
-                    ReloadFile();
-                }
-            });
+            _logFile = new LogFile();
+            _logFile.FileChangedEvent += OnFileChanged;
 
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
             ClearCommand = new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
@@ -62,7 +55,11 @@ namespace ClefViewer
 
         public IEnumerable<string> Levels => Enum.GetNames(typeof(LogEventLevel));
 
-        public CollectionView LogRecordsView { get; }
+        public CollectionView LogRecordsView
+        {
+            get => _logRecordsView;
+            set => SetValue(ref _logRecordsView, value);
+        }
 
         public int SelectedIndex
         {
@@ -108,8 +105,16 @@ namespace ClefViewer
 
         public string LogFilePath
         {
-            get => _logFilePath;
-            set => SetValue(ref _logFilePath, value, ReloadFile);
+            get => _logFile.FilePath;
+            set
+            {
+                if (_logFile.FilePath != value)
+                {
+                    _logFile.FilePath = value;
+                    RaisePropertiesChanged();
+                    ReloadFile();
+                }
+            }
         }
 
         public double LineNumberWidth
@@ -136,11 +141,13 @@ namespace ClefViewer
             set => SetValue(ref _selectedLevelIndex, value, () =>
             {
                 var selectedLevel = Enum.GetValues(typeof(LogEventLevel)).OfType<LogEventLevel>().ElementAt(value);
-                LogRecordsView.Filter = item => selectedLevel <= ((LogRecord)item).LogEvent.Level;
+                var logRecordsView = LogRecordsView;
+                if (logRecordsView != null)
+                {
+                    logRecordsView.Filter = item => selectedLevel <= ((LogRecord)item).LogEvent.Level;
+                }
             });
         }
-
-        private ObservableCollection<LogRecord> LogRecords { get; }
 
         void IDisposable.Dispose()
         {
@@ -167,23 +174,39 @@ namespace ClefViewer
             }
         }
 
-        private async void ReloadFile()
+        private void OnFileChanged(object sender, EventArgs args)
         {
-            var dispatcherService = GetService<IDispatcherService>();
+            if (AutoReload)
+            {
+                ReloadFile();
+            }
+        }
+
+        private void ReloadFile()
+        {
+            if (string.IsNullOrWhiteSpace(LogFilePath))
+            {
+                LogRecordsView = null;
+            }
+
+            if (!File.Exists(LogFilePath))
+            {
+                return;
+            }
+
             try
             {
-                await _logFile.LoadLogFile(this, dispatcherService, LogRecords);
+                var records = _logFile.IterateLogRecords(this, CancellationToken.None, null);
+
+                // TODO: CollectionView loads all records : this cannot load huge file
+                LogRecordsView = (CollectionView)CollectionViewSource.GetDefaultView(records);
+                
+                SelectedIndex = LogRecordsView.Count - 1;
             }
             catch (IOException e)
             {
                 // cannot open file
                 MessageBox.Show(e.GetBaseException().Message);
-                return;
-            }
-
-            if (0 < LogRecords.Count)
-            {
-                SelectedIndex = LogRecords.Count - 1;
             }
         }
 

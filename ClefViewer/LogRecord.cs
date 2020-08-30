@@ -46,11 +46,11 @@ namespace ClefViewer
 
         public string DisplayText => (Render ? RenderMessage(_messageFormatter) : RowText).Replace(Environment.NewLine, " ");
 
+        public LogEvent LogEvent => _logEvent ??= LogEventReader.ReadFromJObject(JObject.Parse(RowText));
+
         private bool Render => _outer.Render;
 
         private bool ShowUTC => _outer.ShowUTC;
-
-        public LogEvent LogEvent => _logEvent ??= LogEventReader.ReadFromJObject(JObject.Parse(RowText));
 
         private string RenderMessage(ITextFormatter formatter)
         {

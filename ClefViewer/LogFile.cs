@@ -4,106 +4,64 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using DevExpress.Mvvm;
+using Serilog;
 
 namespace ClefViewer
 {
     public class LogFile : IDisposable
     {
-        private readonly MainWindowViewModel _outer;
-        private readonly Action _onFileChanged;
         private readonly FileSystemWatcher _logFileWatcher;
-        private CancellationTokenSource _ctsLoadLogFile;
+        private string _filePath;
 
-        public LogFile(MainWindowViewModel outer, Action onFileChanged)
+        public LogFile()
         {
-            _outer = outer;
-            _onFileChanged = onFileChanged;
             _logFileWatcher = new FileSystemWatcher();
         }
 
-        private string FilePath => _outer.LogFilePath;
+        public string FilePath
+        {
+            get => _filePath;
+            set
+            {
+                if (_filePath != value)
+                {
+                    _filePath = value;
+                    OnFilePathChanged();
+                }
+            }
+        }
 
         public void Dispose()
         {
-            _ctsLoadLogFile?.Cancel();
-            _ctsLoadLogFile?.Dispose();
             _logFileWatcher?.Dispose();
         }
 
-        public async Task LoadLogFile(MainWindowViewModel viewModel, IDispatcherService dispatcher, ICollection<LogRecord> logRecords)
+        public event EventHandler FileChangedEvent;
+
+        public IEnumerable<LogRecord> IterateLogRecords(MainWindowViewModel viewModel, CancellationToken token, Action onIterationCompleted)
         {
-            if (dispatcher == null)
+            static bool IsJsonString(string line)
             {
-                throw new ArgumentNullException(nameof(dispatcher));
+                return !string.IsNullOrWhiteSpace(line) && line.StartsWith("{") && line.EndsWith("}");
             }
 
-            _ctsLoadLogFile?.Cancel();
-            var newCts = new CancellationTokenSource();
-            _ctsLoadLogFile = newCts;
-
-            await dispatcher.BeginInvoke(logRecords.Clear);
-
-            if (string.IsNullOrEmpty(FilePath))
-            {
-                _logFileWatcher.EnableRaisingEvents = false;
-                return;
-            }
-
-            if (!File.Exists(FilePath))
-            {
-                _logFileWatcher.EnableRaisingEvents = false;
-                return;
-            }
-
-            _logFileWatcher.Path = Path.GetDirectoryName(FilePath);
-            _logFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
-            _logFileWatcher.Changed += LogFileWatcherOnChanged;
-            _logFileWatcher.EnableRaisingEvents = true;
-            try
-            {
-                var token = _ctsLoadLogFile.Token;
-                var parallelQuery = ReadLines(FilePath)
-                    .AsParallel()
-                    .AsOrdered()
-                    .WithCancellation(token)
-                    .Where(line => !string.IsNullOrWhiteSpace(line))
-                    .Select((line, idx) => new LogRecord(viewModel, line, idx + 1));
-                await Task.Run(async () =>
-                {
-                    foreach (var logRecord in parallelQuery)
-                    {
-                        token.ThrowIfCancellationRequested();
-                        await dispatcher.BeginInvoke(() =>
-                        {
-                            if (!token.IsCancellationRequested)
-                            {
-                                logRecords.Add(logRecord);
-                            }
-                        });
-                    }
-                }, token);
-            }
-            catch (OperationCanceledException)
-            {
-                logRecords.Clear();
-            }
-            finally
-            {
-                if (newCts == _ctsLoadLogFile)
-                {
-                    _ctsLoadLogFile = null;
-                }
-            }
+            var parallelQuery = ReadLines(FilePath, token, onIterationCompleted)
+                .AsParallel()
+                .AsOrdered()
+                .WithCancellation(token)
+                .Where(IsJsonString)
+                .Select((line, idx) => new LogRecord(viewModel, line, idx + 1));
+            return parallelQuery;
         }
 
         /// <summary>
         /// Same as <see cref="File.ReadLines(string)" />, but can open file that log writer process still opens it.
         /// </summary>
         /// <param name="path"></param>
+        /// <param name="token"></param>
+        /// <param name="onLoadCompleted"></param>
         /// <returns></returns>
-        private static IEnumerable<string> ReadLines(string path)
+        private static IEnumerable<string> ReadLines(string path, CancellationToken token, Action onLoadCompleted)
         {
             if (string.IsNullOrEmpty(path))
             {
@@ -115,20 +73,48 @@ namespace ClefViewer
                 throw new InvalidOperationException($"file {path} does not exist.");
             }
 
-            using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var streamReader = new StreamReader(fileStream, Encoding.UTF8);
-            string line;
-            while ((line = streamReader.ReadLine()) != null)
+            using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
             {
-                yield return line;
+                string line;
+                while ((line = streamReader.ReadLine()) != null)
+                {
+                    if (token.IsCancellationRequested)
+                    {
+                        yield break;
+                    }
+
+                    yield return line.Trim();
+                }
+
+                // TODO: save current stream position for 'Tail'
+                // _position = fileStream.Position;
             }
+
+            onLoadCompleted?.Invoke();
         }
 
-        private void LogFileWatcherOnChanged(object sender, FileSystemEventArgs e)
+        private void OnFilePathChanged()
         {
-            if (e.ChangeType == WatcherChangeTypes.Changed && e.Name == Path.GetFileName(FilePath))
+            if (File.Exists(FilePath))
             {
-                _onFileChanged();
+                _logFileWatcher.Path = Path.GetDirectoryName(FilePath);
+                _logFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                _logFileWatcher.Changed += LogFileWatcherOnChanged;
+                _logFileWatcher.EnableRaisingEvents = true;
+            }
+            else
+            {
+                _logFileWatcher.EnableRaisingEvents = false;
+            }
+
+            void LogFileWatcherOnChanged(object sender, FileSystemEventArgs e)
+            {
+                if (e.ChangeType == WatcherChangeTypes.Changed && e.Name == Path.GetFileName(FilePath))
+                {
+                    Log.Information("{@FileSystemEvent}", e);
+                    FileChangedEvent?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
     }
