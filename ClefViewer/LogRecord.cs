@@ -52,6 +52,50 @@ namespace ClefViewer
 
         private bool ShowUTC => _outer.ShowUTC;
 
+        public static bool operator ==(LogRecord left, LogRecord right)
+        {
+            return Equals(left, right);
+        }
+
+        public static bool operator !=(LogRecord left, LogRecord right)
+        {
+            return !Equals(left, right);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj))
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (obj.GetType() != GetType())
+            {
+                return false;
+            }
+
+            return Equals((LogRecord)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (LineNumber.GetHashCode() * 397) ^ (RowText != null ? RowText.GetHashCode() : 0);
+            }
+        }
+
+        protected bool Equals(LogRecord other)
+        {
+            return LineNumber == other.LineNumber
+                   && RowText == other.RowText;
+        }
+
         private string RenderMessage(ITextFormatter formatter)
         {
             var stringWriter = new StringWriter();

@@ -154,5 +154,41 @@ namespace ClefViewer.Properties {
                 this["ErrorLevelWidth"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool AutoReload {
+            get {
+                return ((bool)(this["AutoReload"]));
+            }
+            set {
+                this["AutoReload"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool Tail {
+            get {
+                return ((bool)(this["Tail"]));
+            }
+            set {
+                this["Tail"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int TailSize {
+            get {
+                return ((int)(this["TailSize"]));
+            }
+            set {
+                this["TailSize"] = value;
+            }
+        }
     }
 }

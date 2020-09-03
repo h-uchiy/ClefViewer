@@ -7,6 +7,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Threading;
 using ClefViewer.Properties;
 using DevExpress.Mvvm;
 using DevExpress.Mvvm.Native;
@@ -18,7 +19,8 @@ namespace ClefViewer
 {
     public class MainWindowViewModel : ViewModelBase, IDisposable
     {
-        private readonly LogFile _logFile;
+        private readonly LogFile _logFile = new LogFile();
+        private readonly DispatcherTimer _timer;
 
         private int _selectedIndex;
         private bool _unescape;
@@ -29,12 +31,13 @@ namespace ClefViewer
         private int _selectedLevelIndex = 0;
         private LogRecord _selectedItem;
         private CollectionView _logRecordsView;
+        private bool _tail;
+        private int _tailSize;
 
         public MainWindowViewModel()
         {
-            _logFile = new LogFile();
-            _logFile.FileChangedEvent += OnFileChanged;
-
+            _timer = new DispatcherTimer {Interval = new TimeSpan(0, 0, 1), IsEnabled = false};
+            _timer.Tick += (sender, args) => AutoReloadFile();
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
             ClearCommand = new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
             ReloadCommand = new DelegateCommand(ReloadFile, () => !string.IsNullOrEmpty(LogFilePath));
@@ -82,7 +85,7 @@ namespace ClefViewer
         public bool AutoReload
         {
             get => _autoReload;
-            set => SetValue(ref _autoReload, value);
+            set => SetValue(ref _autoReload, value, () => _timer.IsEnabled = value);
         }
 
         public bool ShowUTC
@@ -117,6 +120,18 @@ namespace ClefViewer
             }
         }
 
+        public bool Tail
+        {
+            get => _tail;
+            set => SetValue(ref _tail, value, () => _logFile.TailSize = _tail && 0 < _tailSize ? _tailSize : -1);
+        }
+
+        public int TailSize
+        {
+            get => _tailSize;
+            set => SetValue(ref _tailSize, value, () => _logFile.TailSize = _tail && 0 < _tailSize ? _tailSize : -1);
+        }
+
         public double LineNumberWidth
         {
             get => Settings.Default.NumberWidth;
@@ -149,9 +164,9 @@ namespace ClefViewer
             });
         }
 
-        void IDisposable.Dispose()
+        public void Dispose()
         {
-            _logFile.Dispose();
+            _timer.Stop();
         }
 
         /// <summary>
@@ -174,9 +189,9 @@ namespace ClefViewer
             }
         }
 
-        private void OnFileChanged(object sender, EventArgs args)
+        private void AutoReloadFile()
         {
-            if (AutoReload)
+            if (File.Exists(LogFilePath) && _logFile.LoadedFileLength != new FileInfo(LogFilePath).Length)
             {
                 ReloadFile();
             }
@@ -196,12 +211,15 @@ namespace ClefViewer
 
             try
             {
-                var records = _logFile.IterateLogRecords(this, CancellationToken.None, null);
+                var showLastRecord = SelectedIndex == (LogRecordsView?.Count ?? 0) - 1;
 
-                // TODO: CollectionView loads all records : this cannot load huge file
-                LogRecordsView = (CollectionView)CollectionViewSource.GetDefaultView(records);
-                
-                SelectedIndex = LogRecordsView.Count - 1;
+                var logRecords = _logFile.IterateLogRecords(this, 0, CancellationToken.None, null);
+                LogRecordsView = (CollectionView)CollectionViewSource.GetDefaultView(logRecords);
+
+                if (showLastRecord)
+                {
+                    SelectedIndex = LogRecordsView.Count - 1;
+                }
             }
             catch (IOException e)
             {

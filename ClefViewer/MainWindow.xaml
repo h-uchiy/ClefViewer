@@ -40,13 +40,22 @@
                 </StackPanel>
                 <Button Margin="2" Content="Clear" MinWidth="16" Command="{Binding ClearCommand}" />
                 <Button Margin="2" Content="Reload" MinWidth="16" Command="{Binding ReloadCommand}" />
-                <CheckBox Margin="2" VerticalAlignment="Center" Content="Render" IsChecked="{Binding Render}" />
-                <CheckBox Margin="2" VerticalAlignment="Center" Content="Auto Reload" IsChecked="{Binding AutoReload}" />
+                <CheckBox Margin="2,2,4,2" VerticalAlignment="Center" Content="Render" IsChecked="{Binding Render}" />
+                <CheckBox Margin="2,2,4,2" VerticalAlignment="Center" Content="Auto Reload"
+                          IsChecked="{Binding AutoReload}" />
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox x:Name="Tail" Margin="2,2,2,2" VerticalAlignment="Center" Content="Load last "
+                              IsChecked="{Binding Tail}" />
+                    <TextBox Margin="0,2,0,2" VerticalAlignment="Center" TextAlignment="Right" Text="{Binding TailSize}"
+                             IsEnabled="{Binding IsChecked, ElementName=Tail, Converter={dxmvvm:BooleanNegationConverter}}" Width="30" />
+                    <Label Margin="0,2,0,2" VerticalAlignment="Center" Content="MB" />
+                </StackPanel>
             </WrapPanel>
             <ListView Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecordsView}"
                       SelectedItem="{Binding SelectedItem}"
                       SelectedIndex="{Binding SelectedIndex}"
                       SelectionChanged="Selector_OnSelectionChanged"
+                      ScrollViewer.IsDeferredScrollingEnabled="True"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling">
                 <dxmvvm:Interaction.Behaviors>
