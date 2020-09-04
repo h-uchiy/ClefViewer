@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using ClefViewer.Properties;
+using Serilog;
 
 namespace ClefViewer
 {
@@ -71,6 +72,22 @@ namespace ClefViewer
             {
                 disposable.Dispose();
             }
+        }
+
+        private void MainWindow_OnDrop(object sender, DragEventArgs e)
+        {
+            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            Log.Information("MainWindow_OnDrop() files={@Files}", files);
+            if (files != null && files.Length > 0 && !string.IsNullOrWhiteSpace(files[0]))
+            {
+                ViewModel.LogFilePath = files[0];
+            }
+        }
+
+        private void MainWindow_OnPreviewDrop(object sender, DragEventArgs e)
+        {
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop, false)
+                ? DragDropEffects.Move : DragDropEffects.None;
         }
     }
 }

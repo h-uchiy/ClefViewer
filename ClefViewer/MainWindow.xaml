@@ -12,9 +12,12 @@
         Width="{Binding MainWindowWidth, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
         Loaded="MainWindow_OnLoaded"
         Closed="MainWindow_OnClosed"
+        AllowDrop="True"
+        PreviewDrop="MainWindow_OnPreviewDrop"
+        Drop="MainWindow_OnDrop"
         d:DesignHeight="300" d:DesignWidth="800">
     <Window.DataContext>
-        <clefViewer:MainWindowViewModel />
+        <clefViewer:MainWindowViewModel x:Name="ViewModel" />
     </Window.DataContext>
     <dxmvvm:Interaction.Behaviors>
         <dxmvvm:OpenFileDialogService />
@@ -34,7 +37,8 @@
             <WrapPanel Grid.Row="0" Margin="2" Orientation="Horizontal" x:Name="LeftPaneToolbar">
                 <StackPanel Orientation="Horizontal">
                     <Label Margin="2,2,0,2" VerticalAlignment="Center" Content="Log file" />
-                    <TextBox Margin="0,2,2,2" VerticalAlignment="Center" Text="{Binding LogFilePath}" Width="250" />
+                    <clefViewer:TextBoxWithFileDrop Margin="0,2,2,2" VerticalAlignment="Center"
+                                                    Text="{Binding LogFilePath}" Width="250" AllowDrop="True" />
                     <Button Margin="2" Padding="5,0,5,0" Content="..." MinWidth="16"
                             Command="{Binding OpenFileDialogCommand}" />
                 </StackPanel>
@@ -46,8 +50,9 @@
                 <StackPanel Orientation="Horizontal">
                     <CheckBox x:Name="Tail" Margin="2,2,2,2" VerticalAlignment="Center" Content="Load last "
                               IsChecked="{Binding Tail}" />
-                    <TextBox Margin="0,2,0,2" VerticalAlignment="Center" TextAlignment="Right" Text="{Binding TailSize}"
-                             IsEnabled="{Binding IsChecked, ElementName=Tail, Converter={dxmvvm:BooleanNegationConverter}}" Width="30" />
+                    <TextBox Margin="0,2,0,2" VerticalAlignment="Center" TextAlignment="Right"
+                             Text="{Binding TailSize}"
+                             IsEnabled="{Binding IsChecked, ElementName=Tail}" Width="30" />
                     <Label Margin="0,2,0,2" VerticalAlignment="Center" Content="MB" />
                 </StackPanel>
             </WrapPanel>
