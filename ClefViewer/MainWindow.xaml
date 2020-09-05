@@ -57,7 +57,7 @@
                 </StackPanel>
             </WrapPanel>
             <ListView Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecordsView}"
-                      SelectedItem="{Binding SelectedItem}"
+                      SelectedItem="{Binding SelectedLogRecord}"
                       SelectedIndex="{Binding SelectedIndex}"
                       SelectionChanged="Selector_OnSelectionChanged"
                       ScrollViewer.IsDeferredScrollingEnabled="True"

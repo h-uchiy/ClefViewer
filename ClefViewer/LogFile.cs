@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Serilog;
 
 namespace ClefViewer
 {
@@ -109,8 +110,10 @@ namespace ClefViewer
                 yield break;
             }
 
+            var count = 0;
             using (var fileStream = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
+                Log.Verbose("ClefViewer.LogFile.ReadLines opened {FilePath}", FilePath);
                 LoadedFileLength = fileStream.Length;
                 if (0 < TailSize)
                 {
@@ -119,7 +122,6 @@ namespace ClefViewer
 
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
-                    var count = 0;
                     string line;
                     while ((line = streamReader.ReadLine()) != null)
                     {
@@ -139,6 +141,7 @@ namespace ClefViewer
                 }
             }
 
+            Log.Verbose("ClefViewer.LogFile.ReadLines end file reading: closed {FilePath}, it was {Line} lines.", FilePath, count);
             onLoadCompleted?.Invoke();
         }
 

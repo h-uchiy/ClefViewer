@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -21,6 +22,7 @@ namespace ClefViewer
     {
         private readonly LogFile _logFile = new LogFile();
         private readonly DispatcherTimer _timer;
+        private readonly WeakEvent<PropertyChangedEventHandler, PropertyChangedEventArgs> _weakEvent = new WeakEvent<PropertyChangedEventHandler, PropertyChangedEventArgs>();
 
         private int _selectedIndex;
         private bool _unescape;
@@ -29,13 +31,14 @@ namespace ClefViewer
         private bool _render;
         private bool _autoReload;
         private int _selectedLevelIndex = 0;
-        private LogRecord _selectedItem;
+        private LogRecord _selectedLogRecord;
         private CollectionView _logRecordsView;
         private bool _tail;
         private int _tailSize;
 
         public MainWindowViewModel()
         {
+            PropertyChanged += (sender, args) => _weakEvent.Raise(sender, args);
             _timer = new DispatcherTimer {Interval = new TimeSpan(0, 0, 1), IsEnabled = false};
             _timer.Tick += (sender, args) => AutoReloadFile();
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
@@ -44,6 +47,12 @@ namespace ClefViewer
             CopyCommand = new DelegateCommand<string>(Copy, CanCopy);
 
             SelectedIndex = -1;
+        }
+        
+        public event PropertyChangedEventHandler WeakPropertyChanged
+        {
+            add => _weakEvent.Add(value);
+            remove => _weakEvent.Remove(value);
         }
 
         public ICommand OpenFileDialogCommand { get; }
@@ -54,7 +63,7 @@ namespace ClefViewer
 
         public ICommand CopyCommand { get; }
 
-        public string RightPane => SelectedItem != null ? IndentJson(SelectedItem.RowText) : string.Empty;
+        public string RightPane => SelectedLogRecord != null ? IndentJson(SelectedLogRecord.RowText) : string.Empty;
 
         public IEnumerable<string> Levels => Enum.GetNames(typeof(LogEventLevel));
 
@@ -70,10 +79,10 @@ namespace ClefViewer
             set => SetValue(ref _selectedIndex, value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
-        public LogRecord SelectedItem
+        public LogRecord SelectedLogRecord
         {
-            get => _selectedItem;
-            set => SetValue(ref _selectedItem, value, () => RaisePropertiesChanged(nameof(RightPane)));
+            get => _selectedLogRecord;
+            set => SetValue(ref _selectedLogRecord, value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public bool Render
@@ -232,16 +241,16 @@ namespace ClefViewer
         {
             if (obj == "LeftPane")
             {
-                if (SelectedItem != null)
+                if (SelectedLogRecord != null)
                 {
-                    Clipboard.SetText(SelectedItem.DisplayText);
+                    Clipboard.SetText(SelectedLogRecord.DisplayText);
                 }
             }
         }
 
         private bool CanCopy(string arg)
         {
-            return arg == "LeftPane" && SelectedItem != null;
+            return arg == "LeftPane" && SelectedLogRecord != null;
         }
 
         private string IndentJson(string logRecord)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using DevExpress.Mvvm;
+using DevExpress.Mvvm.UI.Native;
 using Newtonsoft.Json.Linq;
 using Serilog.Events;
 using Serilog.Formatting;
@@ -11,7 +12,7 @@ namespace ClefViewer
 {
     public class LogRecord : ViewModelBase
     {
-        private const string _timeStampFormat = "yyyy-MM-dd HH:mm:ss.fff";
+        private const string TimeStampFormat = "yyyy-MM-dd HH:mm:ss.fff";
         private static readonly ITextFormatter _levelFormatter = new MessageTemplateTextFormatter("{Level:u3}");
         private static readonly ITextFormatter _messageFormatter = new MessageTemplateTextFormatter("{Message:l}");
         private readonly MainWindowViewModel _outer;
@@ -19,14 +20,14 @@ namespace ClefViewer
 
         public LogRecord(MainWindowViewModel outer, string rowText, int lineNumber)
         {
-            outer.PropertyChanged += (sender, args) =>
+            outer.WeakPropertyChanged += (sender, args) =>
             {
                 switch (args.PropertyName)
                 {
-                    case nameof(outer.Render):
+                    case nameof(MainWindowViewModel.Render):
                         RaisePropertiesChanged(nameof(DisplayText));
                         break;
-                    case nameof(outer.ShowUTC):
+                    case nameof(MainWindowViewModel.ShowUTC):
                         RaisePropertiesChanged(nameof(Timestamp));
                         break;
                 }
@@ -38,7 +39,7 @@ namespace ClefViewer
 
         public int LineNumber { get; }
 
-        public string Timestamp => (ShowUTC ? LogEvent.Timestamp.UtcDateTime : LogEvent.Timestamp.LocalDateTime).ToString(_timeStampFormat);
+        public string Timestamp => (ShowUTC ? LogEvent.Timestamp.UtcDateTime : LogEvent.Timestamp.LocalDateTime).ToString(TimeStampFormat);
 
         public string DisplayLevel => RenderMessage(_levelFormatter);
 
