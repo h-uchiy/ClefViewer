@@ -130,6 +130,7 @@
                         Height="{Binding Height, ElementName=LeftPaneToolbar, Mode=OneWay}">
                 <CheckBox Margin="2" VerticalAlignment="Center" Content="Unescape" IsChecked="{Binding Unescape}" />
                 <CheckBox Margin="2" VerticalAlignment="Center" Content="Unwrap" IsChecked="{Binding Unwrap}" />
+                <CheckBox Margin="2" VerticalAlignment="Center" Content="URL Decode" IsChecked="{Binding UrlDecode}" />
             </StackPanel>
             <TextBox Grid.Row="1" IsReadOnly="True" HorizontalScrollBarVisibility="Auto"
                      VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" Text="{Binding RightPane, Mode=OneWay}" />

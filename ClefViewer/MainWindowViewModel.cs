@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
@@ -35,6 +36,7 @@ namespace ClefViewer
         private CollectionView _logRecordsView;
         private bool _tail;
         private int _tailSize;
+        private bool _urlDecode;
 
         public MainWindowViewModel()
         {
@@ -63,7 +65,7 @@ namespace ClefViewer
 
         public ICommand CopyCommand { get; }
 
-        public string RightPane => SelectedLogRecord != null ? IndentJson(SelectedLogRecord.RowText) : string.Empty;
+        public string RightPane => SelectedLogRecord != null ? FormatRightPane(SelectedLogRecord.RowText) : string.Empty;
 
         public IEnumerable<string> Levels => Enum.GetNames(typeof(LogEventLevel));
 
@@ -113,6 +115,12 @@ namespace ClefViewer
         {
             get => _unwrap;
             set => SetValue(ref _unwrap, value, () => RaisePropertiesChanged(nameof(RightPane)));
+        }
+
+        public bool UrlDecode
+        {
+            get => _urlDecode;
+            set => SetValue(ref _urlDecode, value,() => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public string LogFilePath
@@ -253,7 +261,7 @@ namespace ClefViewer
             return arg == "LeftPane" && SelectedLogRecord != null;
         }
 
-        private string IndentJson(string logRecord)
+        private string FormatRightPane(string logRecord)
         {
             try
             {
@@ -263,8 +271,9 @@ namespace ClefViewer
                     UnwrapJValue(jDocument);
                 }
 
-                var formatJson = jDocument.ToString(Formatting.Indented);
-                return Unescape ? Regex.Unescape(formatJson) : formatJson;
+                return jDocument.ToString(Formatting.Indented)
+                    .Do(Unescape, Regex.Unescape)
+                    .Do(UrlDecode, WebUtility.UrlDecode);
             }
             catch (JsonReaderException)
             {

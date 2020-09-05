@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using DevExpress.Mvvm;
-using DevExpress.Mvvm.UI.Native;
 using Newtonsoft.Json.Linq;
 using Serilog.Events;
 using Serilog.Formatting;
