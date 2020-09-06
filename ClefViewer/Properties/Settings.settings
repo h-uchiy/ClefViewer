@@ -41,7 +41,7 @@
     <Setting Name="Tail" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="TailSize" Type="System.Int32" Scope="User">
+    <Setting Name="TailSize" Type="System.Double" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
   </Settings>

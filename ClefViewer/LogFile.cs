@@ -12,7 +12,7 @@ namespace ClefViewer
     {
         public string FilePath { get; set; }
 
-        public int TailSize { get; set; }
+        public double TailSize { get; set; }
 
         public IEnumerable<LogRecord> IterateLogRecords(MainWindowViewModel viewModel, int skip, CancellationToken token, Action onIterationCompleted)
         {
@@ -117,7 +117,7 @@ namespace ClefViewer
                 LoadedFileLength = fileStream.Length;
                 if (0 < TailSize)
                 {
-                    fileStream.Position = Math.Max(0, fileStream.Length - TailSize * 1024 * 1024);
+                    fileStream.Position = Math.Max(0, fileStream.Length - (int)(TailSize * 1024 * 1024));
                 }
 
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))

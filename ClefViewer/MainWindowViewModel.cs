@@ -35,7 +35,7 @@ namespace ClefViewer
         private LogRecord _selectedLogRecord;
         private CollectionView _logRecordsView;
         private bool _tail;
-        private int _tailSize;
+        private double _tailSize;
         private bool _urlDecode;
 
         public MainWindowViewModel()
@@ -143,7 +143,7 @@ namespace ClefViewer
             set => SetValue(ref _tail, value, () => _logFile.TailSize = _tail && 0 < _tailSize ? _tailSize : -1);
         }
 
-        public int TailSize
+        public double TailSize
         {
             get => _tailSize;
             set => SetValue(ref _tailSize, value, () => _logFile.TailSize = _tail && 0 < _tailSize ? _tailSize : -1);
@@ -216,14 +216,9 @@ namespace ClefViewer
 
         private void ReloadFile()
         {
-            if (string.IsNullOrWhiteSpace(LogFilePath))
+            if (string.IsNullOrWhiteSpace(LogFilePath) || !File.Exists(LogFilePath))
             {
                 LogRecordsView = null;
-            }
-
-            if (!File.Exists(LogFilePath))
-            {
-                return;
             }
 
             try

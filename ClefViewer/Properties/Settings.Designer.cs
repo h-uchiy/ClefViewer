@@ -182,9 +182,9 @@ namespace ClefViewer.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1")]
-        public int TailSize {
+        public double TailSize {
             get {
-                return ((int)(this["TailSize"]));
+                return ((double)(this["TailSize"]));
             }
             set {
                 this["TailSize"] = value;
