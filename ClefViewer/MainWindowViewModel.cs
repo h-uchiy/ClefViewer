@@ -35,6 +35,8 @@ namespace ClefViewer
         private CollectionView _logRecordsView;
         private bool _tail;
         private int _tailSize;
+        private string _filterText;
+        private bool _useFilterText;
 
         public MainWindowViewModel()
         {
@@ -47,12 +49,6 @@ namespace ClefViewer
             CopyCommand = new DelegateCommand<string>(Copy, CanCopy);
 
             SelectedIndex = -1;
-        }
-        
-        public event PropertyChangedEventHandler WeakPropertyChanged
-        {
-            add => _weakEvent.Add(value);
-            remove => _weakEvent.Remove(value);
         }
 
         public ICommand OpenFileDialogCommand { get; }
@@ -141,6 +137,18 @@ namespace ClefViewer
             set => SetValue(ref _tailSize, value, () => _logFile.TailSize = _tail && 0 < _tailSize ? _tailSize : -1);
         }
 
+        public string FilterText
+        {
+            get => _filterText;
+            set => SetValue(ref _filterText, value, ReloadFile);
+        }
+
+        public bool UseFilterText
+        {
+            get => _useFilterText;
+            set => SetValue(ref _useFilterText, value, ApplyFilter);
+        }
+
         public double LineNumberWidth
         {
             get => Settings.Default.NumberWidth;
@@ -162,20 +170,18 @@ namespace ClefViewer
         public int SelectedLevelIndex
         {
             get => _selectedLevelIndex;
-            set => SetValue(ref _selectedLevelIndex, value, () =>
-            {
-                var selectedLevel = Enum.GetValues(typeof(LogEventLevel)).OfType<LogEventLevel>().ElementAt(value);
-                var logRecordsView = LogRecordsView;
-                if (logRecordsView != null)
-                {
-                    logRecordsView.Filter = item => selectedLevel <= ((LogRecord)item).LogEvent.Level;
-                }
-            });
+            set => SetValue(ref _selectedLevelIndex, value, ApplyFilter);
         }
 
         public void Dispose()
         {
             _timer.Stop();
+        }
+
+        public event PropertyChangedEventHandler WeakPropertyChanged
+        {
+            add => _weakEvent.Add(value);
+            remove => _weakEvent.Remove(value);
         }
 
         /// <summary>
@@ -195,6 +201,39 @@ namespace ClefViewer
                         jProperty.Value = JObject.Parse(value);
                     }
                 }
+            }
+        }
+
+        private void ApplyFilter()
+        {
+            var filterExpressions = new List<Func<LogRecord,bool>>();
+            
+            var selectedLevel = Enum.GetValues(typeof(LogEventLevel)).OfType<LogEventLevel>().ElementAt(SelectedLevelIndex);
+            if(LogEventLevel.Verbose < selectedLevel)
+            {
+                filterExpressions.Add(item => selectedLevel <= item.LogEvent.Level);
+            }
+
+            if (UseFilterText)
+            {
+                filterExpressions.Add(item =>
+                {
+                    try
+                    {
+                        return JObject.Parse(item.RowText).SelectToken(FilterText) != null;
+                    }
+                    catch (JsonException e)
+                    {
+                        // TODO: feedback filter text parse error
+                        return false;
+                    }
+                });
+            }
+            
+            var logRecordsView = LogRecordsView;
+            if (logRecordsView != null)
+            {
+                logRecordsView.Filter = item => filterExpressions.All(x => x((LogRecord)item));
             }
         }
 
@@ -224,6 +263,7 @@ namespace ClefViewer
 
                 var logRecords = _logFile.IterateLogRecords(this, 0, CancellationToken.None, null);
                 LogRecordsView = (CollectionView)CollectionViewSource.GetDefaultView(logRecords);
+                ApplyFilter();
 
                 if (showLastRecord)
                 {

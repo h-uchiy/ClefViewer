@@ -55,6 +55,12 @@
                              IsEnabled="{Binding IsChecked, ElementName=Tail}" Width="30" />
                     <Label Margin="0,2,0,2" VerticalAlignment="Center" Content="MB" />
                 </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox x:Name="UseFilterText" Margin="2,2,2,2" VerticalAlignment="Center" Content="JSONPath Filter"
+                              IsChecked="{Binding UseFilterText}" />
+                    <TextBox Margin="0,2,0,2" VerticalAlignment="Center" TextAlignment="Left"
+                             Text="{Binding FilterText}" Width="250" IsEnabled="{Binding IsChecked, ElementName=UseFilterText}"/>
+                </StackPanel>
             </WrapPanel>
             <ListView Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecordsView}"
                       SelectedItem="{Binding SelectedLogRecord}"
