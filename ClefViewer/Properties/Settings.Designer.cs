@@ -190,5 +190,29 @@ namespace ClefViewer.Properties {
                 this["TailSize"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool Indent {
+            get {
+                return ((bool)(this["Indent"]));
+            }
+            set {
+                this["Indent"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string FilterText {
+            get {
+                return ((string)(this["FilterText"]));
+            }
+            set {
+                this["FilterText"] = value;
+            }
+        }
     }
 }

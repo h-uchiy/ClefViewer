@@ -36,7 +36,8 @@ namespace ClefViewer
         private bool _tail;
         private int _tailSize;
         private string _filterText;
-        private bool _useFilterText;
+        private FilterMethods _selectedFilterMethods;
+        private bool _indent;
 
         public MainWindowViewModel()
         {
@@ -99,6 +100,12 @@ namespace ClefViewer
             set => SetValue(ref _showUTC, value);
         }
 
+        public bool Indent
+        {
+            get => _indent;
+            set => SetValue(ref _indent, value, () => RaisePropertiesChanged(nameof(RightPane)));
+        }
+
         public bool Unescape
         {
             get => _unescape;
@@ -140,13 +147,15 @@ namespace ClefViewer
         public string FilterText
         {
             get => _filterText;
-            set => SetValue(ref _filterText, value, ReloadFile);
+            set => SetValue(ref _filterText, value, ApplyFilter);
         }
 
-        public bool UseFilterText
+        public IEnumerable<string> FilterMethods => Enum.GetNames(typeof(FilterMethods));
+
+        public FilterMethods SelectedFilterMethods
         {
-            get => _useFilterText;
-            set => SetValue(ref _useFilterText, value, ApplyFilter);
+            get => _selectedFilterMethods;
+            set => SetValue(ref _selectedFilterMethods, value, ApplyFilter);
         }
 
         public double LineNumberWidth
@@ -214,20 +223,29 @@ namespace ClefViewer
                 filterExpressions.Add(item => selectedLevel <= item.LogEvent.Level);
             }
 
-            if (UseFilterText)
+            switch (SelectedFilterMethods)
             {
-                filterExpressions.Add(item =>
-                {
-                    try
+                case ClefViewer.FilterMethods.None:
+                    break;
+                case ClefViewer.FilterMethods.RegExp:
+                    filterExpressions.Add(item => Regex.IsMatch(item.RowText, FilterText));
+                    break;
+                case ClefViewer.FilterMethods.JSONPath:
+                    filterExpressions.Add(item =>
                     {
-                        return JObject.Parse(item.RowText).SelectToken(FilterText) != null;
-                    }
-                    catch (JsonException e)
-                    {
-                        // TODO: feedback filter text parse error
-                        return false;
-                    }
-                });
+                        try
+                        {
+                            return JObject.Parse(item.RowText).SelectToken(FilterText) != null;
+                        }
+                        catch (JsonException)
+                        {
+                            // TODO: feedback filter text parse error
+                            return false;
+                        }
+                    });
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
             
             var logRecordsView = LogRecordsView;
@@ -303,7 +321,7 @@ namespace ClefViewer
                     UnwrapJValue(jDocument);
                 }
 
-                var formatJson = jDocument.ToString(Formatting.Indented);
+                var formatJson = jDocument.ToString(Indent ? Formatting.Indented : Formatting.None);
                 return Unescape ? Regex.Unescape(formatJson) : formatJson;
             }
             catch (JsonReaderException)
@@ -326,5 +344,12 @@ namespace ClefViewer
                 LogFilePath = service.File.GetFullName();
             }
         }
+    }
+
+    public enum FilterMethods
+    {
+        None,
+        RegExp,
+        JSONPath
     }
 }

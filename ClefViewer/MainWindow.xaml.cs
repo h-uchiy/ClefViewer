@@ -42,11 +42,13 @@ namespace ClefViewer
             if (DataContext is MainWindowViewModel viewModel)
             {
                 viewModel.Render = Settings.Default.Render;
+                viewModel.Indent = Settings.Default.Indent;
                 viewModel.Unescape = Settings.Default.Unescape;
                 viewModel.Unwrap = Settings.Default.Unwrap;
                 viewModel.AutoReload = Settings.Default.AutoReload;
                 viewModel.Tail = Settings.Default.Tail;
                 viewModel.TailSize = Settings.Default.TailSize;
+                viewModel.FilterText = Settings.Default.FilterText;
                 viewModel.LogFilePath = Settings.Default.LogFilePath;
             }
         }
@@ -56,11 +58,13 @@ namespace ClefViewer
             if (DataContext is MainWindowViewModel viewModel)
             {
                 Settings.Default.Render = viewModel.Render;
+                Settings.Default.Indent = viewModel.Indent;
                 Settings.Default.Unescape = viewModel.Unescape;
                 Settings.Default.Unwrap = viewModel.Unwrap;
                 Settings.Default.AutoReload = viewModel.AutoReload;
                 Settings.Default.Tail = viewModel.Tail;
                 Settings.Default.TailSize = viewModel.TailSize;
+                Settings.Default.FilterText = viewModel.FilterText;
                 if (string.IsNullOrEmpty(viewModel.LogFilePath) || File.Exists(viewModel.LogFilePath))
                 {
                     Settings.Default.LogFilePath = viewModel.LogFilePath;
