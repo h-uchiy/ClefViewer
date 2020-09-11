@@ -101,7 +101,6 @@ namespace ClefViewer
         /// <param name="skip"></param>
         /// <param name="token"></param>
         /// <param name="onLoadCompleted"></param>
-        /// <param name="path"></param>
         /// <returns></returns>
         private IEnumerable<string> ReadLines(long skip, CancellationToken token, Action onLoadCompleted)
         {

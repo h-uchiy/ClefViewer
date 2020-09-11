@@ -37,6 +37,9 @@ namespace ClefViewer
         private bool _tail;
         private double _tailSize;
         private bool _urlDecode;
+        private string _filterText;
+        private FilterMethods _selectedFilterMethods;
+        private bool _indent;
 
         public MainWindowViewModel()
         {
@@ -49,12 +52,6 @@ namespace ClefViewer
             CopyCommand = new DelegateCommand<string>(Copy, CanCopy);
 
             SelectedIndex = -1;
-        }
-        
-        public event PropertyChangedEventHandler WeakPropertyChanged
-        {
-            add => _weakEvent.Add(value);
-            remove => _weakEvent.Remove(value);
         }
 
         public ICommand OpenFileDialogCommand { get; }
@@ -105,6 +102,12 @@ namespace ClefViewer
             set => SetValue(ref _showUTC, value);
         }
 
+        public bool Indent
+        {
+            get => _indent;
+            set => SetValue(ref _indent, value, () => RaisePropertiesChanged(nameof(RightPane)));
+        }
+
         public bool Unescape
         {
             get => _unescape;
@@ -149,6 +152,20 @@ namespace ClefViewer
             set => SetValue(ref _tailSize, value, () => _logFile.TailSize = _tail && 0 < _tailSize ? _tailSize : -1);
         }
 
+        public string FilterText
+        {
+            get => _filterText;
+            set => SetValue(ref _filterText, value, ApplyFilter);
+        }
+
+        public IEnumerable<string> FilterMethods => Enum.GetNames(typeof(FilterMethods));
+
+        public FilterMethods SelectedFilterMethods
+        {
+            get => _selectedFilterMethods;
+            set => SetValue(ref _selectedFilterMethods, value, ApplyFilter);
+        }
+
         public double LineNumberWidth
         {
             get => Settings.Default.NumberWidth;
@@ -170,20 +187,18 @@ namespace ClefViewer
         public int SelectedLevelIndex
         {
             get => _selectedLevelIndex;
-            set => SetValue(ref _selectedLevelIndex, value, () =>
-            {
-                var selectedLevel = Enum.GetValues(typeof(LogEventLevel)).OfType<LogEventLevel>().ElementAt(value);
-                var logRecordsView = LogRecordsView;
-                if (logRecordsView != null)
-                {
-                    logRecordsView.Filter = item => selectedLevel <= ((LogRecord)item).LogEvent.Level;
-                }
-            });
+            set => SetValue(ref _selectedLevelIndex, value, ApplyFilter);
         }
 
         public void Dispose()
         {
             _timer.Stop();
+        }
+
+        public event PropertyChangedEventHandler WeakPropertyChanged
+        {
+            add => _weakEvent.Add(value);
+            remove => _weakEvent.Remove(value);
         }
 
         /// <summary>
@@ -203,6 +218,48 @@ namespace ClefViewer
                         jProperty.Value = JObject.Parse(value);
                     }
                 }
+            }
+        }
+
+        private void ApplyFilter()
+        {
+            var filterExpressions = new List<Func<LogRecord,bool>>();
+            
+            var selectedLevel = Enum.GetValues(typeof(LogEventLevel)).OfType<LogEventLevel>().ElementAt(SelectedLevelIndex);
+            if(LogEventLevel.Verbose < selectedLevel)
+            {
+                filterExpressions.Add(item => selectedLevel <= item.LogEvent.Level);
+            }
+
+            switch (SelectedFilterMethods)
+            {
+                case ClefViewer.FilterMethods.None:
+                    break;
+                case ClefViewer.FilterMethods.RegExp:
+                    filterExpressions.Add(item => Regex.IsMatch(item.RowText, FilterText));
+                    break;
+                case ClefViewer.FilterMethods.JSONPath:
+                    filterExpressions.Add(item =>
+                    {
+                        try
+                        {
+                            return JObject.Parse(item.RowText).SelectToken(FilterText) != null;
+                        }
+                        catch (JsonException)
+                        {
+                            // TODO: feedback filter text parse error
+                            return false;
+                        }
+                    });
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            
+            var logRecordsView = LogRecordsView;
+            if (logRecordsView != null)
+            {
+                logRecordsView.Filter = item => filterExpressions.All(x => x((LogRecord)item));
             }
         }
 
@@ -227,6 +284,7 @@ namespace ClefViewer
 
                 var logRecords = _logFile.IterateLogRecords(this, 0, CancellationToken.None, null);
                 LogRecordsView = (CollectionView)CollectionViewSource.GetDefaultView(logRecords);
+                ApplyFilter();
 
                 if (showLastRecord)
                 {
@@ -266,7 +324,7 @@ namespace ClefViewer
                     UnwrapJValue(jDocument);
                 }
 
-                return jDocument.ToString(Formatting.Indented)
+                return jDocument.ToString(Indent ? Formatting.Indented : Formatting.None)
                     .Do(Unescape, Regex.Unescape)
                     .Do(UrlDecode, WebUtility.UrlDecode);
             }
@@ -290,5 +348,12 @@ namespace ClefViewer
                 LogFilePath = service.File.GetFullName();
             }
         }
+    }
+
+    public enum FilterMethods
+    {
+        None,
+        RegExp,
+        JSONPath
     }
 }
