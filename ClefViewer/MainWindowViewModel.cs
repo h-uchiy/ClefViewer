@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
@@ -23,23 +24,17 @@ namespace ClefViewer
     {
         private readonly LogFile _logFile = new LogFile();
         private readonly DispatcherTimer _timer;
-        private readonly WeakEvent<PropertyChangedEventHandler, PropertyChangedEventArgs> _weakEvent = new WeakEvent<PropertyChangedEventHandler, PropertyChangedEventArgs>();
+
+        private readonly WeakEvent<PropertyChangedEventHandler, PropertyChangedEventArgs> _weakEvent =
+            new WeakEvent<PropertyChangedEventHandler, PropertyChangedEventArgs>();
+
+        private CollectionView _logRecordsView;
+        private int _selectedFilterMethods;
 
         private int _selectedIndex;
-        private bool _unescape;
-        private bool _unwrap;
-        private bool _showUTC;
-        private bool _render;
-        private bool _autoReload;
-        private int _selectedLevelIndex = 0;
+        private int _selectedLevelIndex;
         private LogRecord _selectedLogRecord;
-        private CollectionView _logRecordsView;
-        private bool _tail;
-        private double _tailSize;
-        private bool _urlDecode;
-        private string _filterText;
-        private FilterMethods _selectedFilterMethods;
-        private bool _indent;
+        private IList<LogRecord> _selectedLogRecords;
 
         public MainWindowViewModel()
         {
@@ -47,7 +42,8 @@ namespace ClefViewer
             _timer = new DispatcherTimer {Interval = new TimeSpan(0, 0, 1), IsEnabled = false};
             _timer.Tick += (sender, args) => AutoReloadFile();
             OpenFileDialogCommand = new DelegateCommand(OpenFileDialog);
-            ClearCommand = new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
+            ClearCommand =
+                new DelegateCommand(() => LogFilePath = string.Empty, () => !string.IsNullOrEmpty(LogFilePath));
             ReloadCommand = new DelegateCommand(ReloadFile, () => !string.IsNullOrEmpty(LogFilePath));
             CopyCommand = new DelegateCommand<string>(Copy, CanCopy);
 
@@ -62,7 +58,8 @@ namespace ClefViewer
 
         public ICommand CopyCommand { get; }
 
-        public string RightPane => SelectedLogRecord != null ? FormatRightPane(SelectedLogRecord.RowText) : string.Empty;
+        public string RightPane =>
+            SelectedLogRecord != null ? FormatRightPane(SelectedLogRecord.RowText) : string.Empty;
 
         public IEnumerable<string> Levels => Enum.GetNames(typeof(LogEventLevel));
 
@@ -83,105 +80,89 @@ namespace ClefViewer
             get => _selectedLogRecord;
             set => SetValue(ref _selectedLogRecord, value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
+        
+        public IList<LogRecord> SelectedLogRecords
+        {
+            get => _selectedLogRecords;
+            set => SetValue(ref _selectedLogRecords, value);
+        }
 
         public bool Render
         {
-            get => _render;
-            set => SetValue(ref _render, value);
+            get => Settings.Default.Render;
+            set => SetValue(value);
         }
 
         public bool AutoReload
         {
-            get => _autoReload;
-            set => SetValue(ref _autoReload, value, () => _timer.IsEnabled = value);
+            get => Settings.Default.AutoReload;
+            set => SetValue(value, () => _timer.IsEnabled = value);
         }
 
         public bool ShowUTC
         {
-            get => _showUTC;
-            set => SetValue(ref _showUTC, value);
+            get => Settings.Default.ShowUTC;
+            set => SetValue(value);
         }
 
         public bool Indent
         {
-            get => _indent;
-            set => SetValue(ref _indent, value, () => RaisePropertiesChanged(nameof(RightPane)));
+            get => Settings.Default.Indent;
+            set => SetValue(value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public bool Unescape
         {
-            get => _unescape;
-            set => SetValue(ref _unescape, value, () => RaisePropertiesChanged(nameof(RightPane)));
+            get => Settings.Default.Unescape;
+            set => SetValue(value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public bool Unwrap
         {
-            get => _unwrap;
-            set => SetValue(ref _unwrap, value, () => RaisePropertiesChanged(nameof(RightPane)));
+            get => Settings.Default.Unwrap;
+            set => SetValue(value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public bool UrlDecode
         {
-            get => _urlDecode;
-            set => SetValue(ref _urlDecode, value,() => RaisePropertiesChanged(nameof(RightPane)));
+            get => Settings.Default.UrlDecode;
+            set => SetValue(value, () => RaisePropertiesChanged(nameof(RightPane)));
         }
 
         public string LogFilePath
         {
-            get => _logFile.FilePath;
-            set
-            {
-                if (_logFile.FilePath != value)
-                {
-                    _logFile.FilePath = value;
-                    RaisePropertiesChanged();
-                    ReloadFile();
-                }
-            }
+            get => Settings.Default.LogFilePath;
+            set => SetValue(value, ReloadFile);
         }
 
         public bool Tail
         {
-            get => _tail;
-            set => SetValue(ref _tail, value, () => _logFile.TailSize = _tail && 0 < _tailSize ? _tailSize : -1);
+            get => Settings.Default.Tail;
+            set => SetValue(value, ReloadFile);
         }
 
         public double TailSize
         {
-            get => _tailSize;
-            set => SetValue(ref _tailSize, value, () => _logFile.TailSize = _tail && 0 < _tailSize ? _tailSize : -1);
+            get => Settings.Default.TailSize;
+            set => SetValue(value, ReloadFile);
         }
 
         public string FilterText
         {
-            get => _filterText;
-            set => SetValue(ref _filterText, value, ApplyFilter);
+            get => Settings.Default.FilterText;
+            set => SetValue(value, () =>
+            {
+                Settings.Default.FilterText = value;
+                ApplyFilter();
+            });
         }
 
         public IEnumerable<string> FilterMethods => Enum.GetNames(typeof(FilterMethods));
 
-        public FilterMethods SelectedFilterMethods
+        public int SelectedFilterMethods
         {
             get => _selectedFilterMethods;
             set => SetValue(ref _selectedFilterMethods, value, ApplyFilter);
-        }
-
-        public double LineNumberWidth
-        {
-            get => Settings.Default.NumberWidth;
-            set => Settings.Default.NumberWidth = value;
-        }
-
-        public double TimestampWidth
-        {
-            get => Settings.Default.TimestampWidth;
-            set => Settings.Default.TimestampWidth = value;
-        }
-
-        public double ErrorLevelWidth
-        {
-            get => Settings.Default.ErrorLevelWidth;
-            set => Settings.Default.ErrorLevelWidth = value;
         }
 
         public int SelectedLevelIndex
@@ -195,6 +176,25 @@ namespace ClefViewer
             _timer.Stop();
         }
 
+        protected override bool SetPropertyCore<T>(string propertyName, T value, out T oldValue)
+        {
+            var propInfo = Settings.Default.GetType().GetProperty(propertyName);
+            if (propInfo == null)
+            {
+                return base.SetPropertyCore(propertyName, value, out oldValue);
+            }
+
+            oldValue = (T)propInfo.GetValue(Settings.Default);
+            if (Equals(oldValue, value))
+            {
+                return false;
+            }
+
+            propInfo.SetValue(Settings.Default, value);
+            RaisePropertiesChanged(propertyName);
+            return true;
+        }
+
         public event PropertyChangedEventHandler WeakPropertyChanged
         {
             add => _weakEvent.Add(value);
@@ -202,7 +202,7 @@ namespace ClefViewer
         }
 
         /// <summary>
-        /// Retrieve stringified JSON property values.
+        ///     Retrieve stringified JSON property values.
         /// </summary>
         /// <param name="jDocument"></param>
         private static void UnwrapJValue(JObject jDocument)
@@ -223,15 +223,16 @@ namespace ClefViewer
 
         private void ApplyFilter()
         {
-            var filterExpressions = new List<Func<LogRecord,bool>>();
-            
-            var selectedLevel = Enum.GetValues(typeof(LogEventLevel)).OfType<LogEventLevel>().ElementAt(SelectedLevelIndex);
-            if(LogEventLevel.Verbose < selectedLevel)
+            var filterExpressions = new List<Func<LogRecord, bool>>();
+
+            var selectedLevel = Enum.GetValues(typeof(LogEventLevel)).OfType<LogEventLevel>()
+                .ElementAt(SelectedLevelIndex);
+            if (LogEventLevel.Verbose < selectedLevel)
             {
                 filterExpressions.Add(item => selectedLevel <= item.LogEvent.Level);
             }
 
-            switch (SelectedFilterMethods)
+            switch ((FilterMethods)SelectedFilterMethods)
             {
                 case ClefViewer.FilterMethods.None:
                     break;
@@ -255,7 +256,7 @@ namespace ClefViewer
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            
+
             var logRecordsView = LogRecordsView;
             if (logRecordsView != null)
             {
@@ -298,20 +299,30 @@ namespace ClefViewer
             }
         }
 
-        private void Copy(string obj)
+        private void Copy(string arg)
         {
-            if (obj == "LeftPane")
+            switch (arg)
             {
-                if (SelectedLogRecord != null)
-                {
-                    Clipboard.SetText(SelectedLogRecord.DisplayText);
-                }
+                case "LeftPane":
+                    Clipboard.SetText(SelectedLogRecords
+                        .Select(x => Render ? $"{x.Timestamp} [{x.DisplayLevel}] {x.DisplayText}" : x.RowText)
+                        .Aggregate(new StringBuilder(), (x,y) => x.Append(Environment.NewLine).Append(y))
+                        .ToString());
+                    break;
+                default:
+                    break;
             }
         }
 
         private bool CanCopy(string arg)
         {
-            return arg == "LeftPane" && SelectedLogRecord != null;
+            switch (arg)
+            {
+                case "LeftPane":
+                    return 0 < SelectedLogRecords.Count;
+                default:
+                    return false;
+            }
         }
 
         private string FormatRightPane(string logRecord)
@@ -341,7 +352,8 @@ namespace ClefViewer
         private void OpenFileDialog()
         {
             var service = GetService<IOpenFileDialogService>();
-            service.Filter = "Compact Log Event Format File (*.clef)|*.clef|Log File (*.log)|*.log|Text File (*.txt)|*.txt|All File (*.*)|*.*";
+            service.Filter =
+                "Compact Log Event Format File (*.clef)|*.clef|Log File (*.log)|*.log|Text File (*.txt)|*.txt|All File (*.*)|*.*";
             service.Title = Application.Current.MainWindow?.Title ?? string.Empty;
             if (service.ShowDialog())
             {

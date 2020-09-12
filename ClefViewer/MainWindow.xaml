@@ -10,12 +10,17 @@
         Title="{Binding AppName, Source={x:Static p:Settings.Default}, Mode=OneWay}"
         Height="{Binding MainWindowHeight, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
         Width="{Binding MainWindowWidth, Source={x:Static p:Settings.Default}, Mode=TwoWay}"
-        Loaded="MainWindow_OnLoaded"
         Closed="MainWindow_OnClosed"
         AllowDrop="True"
         PreviewDrop="MainWindow_OnPreviewDrop"
         Drop="MainWindow_OnDrop"
         d:DesignHeight="300" d:DesignWidth="800">
+    <Window.Resources>
+        <ContextMenu x:Key="LeftPaneContextMenu">
+            <MenuItem Header="Copy" Command="{Binding CopyCommand}" CommandParameter="LeftPane"/>
+        </ContextMenu>
+        <dxmvvm:NumericToBooleanConverter x:Key="NumericToBooleanConverter"/>
+    </Window.Resources>
     <Window.DataContext>
         <clefViewer:MainWindowViewModel x:Name="ViewModel" />
     </Window.DataContext>
@@ -45,16 +50,16 @@
                 <CheckBox x:Name="Tail" Margin="2,2,2,2" VerticalAlignment="Center" Content="Load last "
                           IsChecked="{Binding Tail}" />
                 <TextBox Margin="0,2,0,2" VerticalAlignment="Center" TextAlignment="Right"
-                         Text="{Binding TailSize}"
+                         Text="{Binding TailSize, ValidatesOnExceptions=True}"
                          IsEnabled="{Binding IsChecked, ElementName=Tail}" Width="30" />
                 <Label Margin="0,2,0,2" VerticalAlignment="Center" Content="MB" />
             </StackPanel>
             <StackPanel Orientation="Horizontal">
-                <ComboBox Margin="2,2,2,2" ItemsSource="{Binding FilterMethods}"
+                <ComboBox x:Name="FilterMethods" Margin="2,2,2,2" ItemsSource="{Binding FilterMethods}"
                           SelectedIndex="{Binding SelectedFilterMethods}" />
                 <TextBox Margin="0,2,0,2" VerticalAlignment="Center" TextAlignment="Left"
                          Text="{Binding FilterText}" Width="250"
-                         IsEnabled="{Binding IsChecked, ElementName=UseFilterText}" />
+                         IsEnabled="{Binding SelectedIndex, ElementName=FilterMethods, Converter={StaticResource NumericToBooleanConverter}}"/>
             </StackPanel>
         </WrapPanel>
         <Grid Grid.Row="1">
@@ -68,23 +73,24 @@
                           SelectedItem="{Binding SelectedLogRecord}"
                           SelectedIndex="{Binding SelectedIndex}"
                           SelectionChanged="Selector_OnSelectionChanged"
+                          ContextMenu="{StaticResource LeftPaneContextMenu}"
                           ScrollViewer.IsDeferredScrollingEnabled="True"
                           VirtualizingPanel.IsVirtualizing="True"
                           VirtualizingPanel.VirtualizationMode="Recycling">
-                    <dxmvvm:Interaction.Behaviors>
-                        <dxmvvm:KeyToCommand KeyGesture="CTRL+C" Command="{Binding CopyCommand}"
-                                             CommandParameter="LeftPane" />
-                    </dxmvvm:Interaction.Behaviors>
+                    <ListView.CommandBindings>
+                        <CommandBinding Command="Copy" Executed="ListView_CopyCommand"/>
+                    </ListView.CommandBindings>
+                    <ListView.InputBindings>
+                        <KeyBinding Key="C" Modifiers="Control" Command="Copy"/>
+                    </ListView.InputBindings>
                     <ListView.View>
                         <GridView>
                             <GridView.ColumnHeaderContextMenu>
                                 <ContextMenu />
                             </GridView.ColumnHeaderContextMenu>
                             <GridViewColumn
-                                Width="{Binding LineNumberWidth, Source={RelativeSource TemplatedParent}}"
                                 Header="Line No." DisplayMemberBinding="{Binding LineNumber}" />
                             <GridViewColumn
-                                Width="{Binding TimestampWidth, Source={RelativeSource TemplatedParent}}"
                                 DisplayMemberBinding="{Binding Timestamp}">
                                 <GridViewColumn.Header>
                                     <Grid HorizontalAlignment="Stretch">
@@ -104,7 +110,6 @@
                                 </GridViewColumn.Header>
                             </GridViewColumn>
                             <GridViewColumn
-                                Width="{Binding ErrorLevelWidth, Source={RelativeSource TemplatedParent}}"
                                 DisplayMemberBinding="{Binding DisplayLevel}">
                                 <GridViewColumn.Header>
                                     <ComboBox ItemsSource="{Binding Levels}"

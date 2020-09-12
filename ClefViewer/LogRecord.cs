@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using DevExpress.Mvvm;
 using Newtonsoft.Json.Linq;
 using Serilog.Events;
@@ -15,7 +16,7 @@ namespace ClefViewer
         private static readonly ITextFormatter _levelFormatter = new MessageTemplateTextFormatter("{Level:u3}");
         private static readonly ITextFormatter _messageFormatter = new MessageTemplateTextFormatter("{Message:l}");
         private readonly MainWindowViewModel _outer;
-        private LogEvent _logEvent;
+        private readonly Lazy<LogEvent> _logEvent;
 
         public LogRecord(MainWindowViewModel outer, string rowText, int lineNumber)
         {
@@ -34,6 +35,17 @@ namespace ClefViewer
             _outer = outer;
             LineNumber = lineNumber;
             RowText = rowText.Trim();
+            _logEvent = new Lazy<LogEvent>(() =>
+            {
+                try
+                {
+                    return LogEventReader.ReadFromJObject(JObject.Parse(RowText));
+                }
+                catch
+                {
+                    return new LogEvent(DateTimeOffset.MinValue, LogEventLevel.Verbose, new Exception(), MessageTemplate.Empty, Enumerable.Empty<LogEventProperty>());
+                }
+            });
         }
 
         public int LineNumber { get; }
@@ -46,7 +58,7 @@ namespace ClefViewer
 
         public string DisplayText => (Render ? RenderMessage(_messageFormatter) : RowText).Replace(Environment.NewLine, " ");
 
-        public LogEvent LogEvent => _logEvent ??= LogEventReader.ReadFromJObject(JObject.Parse(RowText));
+        public LogEvent LogEvent => _logEvent.Value;
 
         private bool Render => _outer.Render;
 

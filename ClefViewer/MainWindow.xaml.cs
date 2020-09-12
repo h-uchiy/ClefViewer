@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using ClefViewer.Properties;
 using Serilog;
 
@@ -24,6 +26,8 @@ namespace ClefViewer
                 return;
             }
 
+            ViewModel.SelectedLogRecords = listBox.SelectedItems.Cast<LogRecord>().ToList();
+
             // Show selected row when selected row was changed from view model
             if (0 < listBox.SelectedItems.Count)
             {
@@ -37,40 +41,8 @@ namespace ClefViewer
             e.Handled = true;
         }
 
-        private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is MainWindowViewModel viewModel)
-            {
-                viewModel.Render = Settings.Default.Render;
-                viewModel.Indent = Settings.Default.Indent;
-                viewModel.Unescape = Settings.Default.Unescape;
-                viewModel.Unwrap = Settings.Default.Unwrap;
-                viewModel.AutoReload = Settings.Default.AutoReload;
-                viewModel.Tail = Settings.Default.Tail;
-                viewModel.TailSize = Settings.Default.TailSize;
-                viewModel.FilterText = Settings.Default.FilterText;
-                viewModel.LogFilePath = Settings.Default.LogFilePath;
-            }
-        }
-
         private void MainWindow_OnClosed(object sender, EventArgs e)
         {
-            if (DataContext is MainWindowViewModel viewModel)
-            {
-                Settings.Default.Render = viewModel.Render;
-                Settings.Default.Indent = viewModel.Indent;
-                Settings.Default.Unescape = viewModel.Unescape;
-                Settings.Default.Unwrap = viewModel.Unwrap;
-                Settings.Default.AutoReload = viewModel.AutoReload;
-                Settings.Default.Tail = viewModel.Tail;
-                Settings.Default.TailSize = viewModel.TailSize;
-                Settings.Default.FilterText = viewModel.FilterText;
-                if (string.IsNullOrEmpty(viewModel.LogFilePath) || File.Exists(viewModel.LogFilePath))
-                {
-                    Settings.Default.LogFilePath = viewModel.LogFilePath;
-                }
-            }
-
             // Dispose view model
             if (DataContext is IDisposable disposable)
             {
@@ -92,6 +64,14 @@ namespace ClefViewer
         {
             e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop, false)
                 ? DragDropEffects.Move : DragDropEffects.None;
+        }
+
+        private void ListView_CopyCommand(object sender, ExecutedRoutedEventArgs e)
+        {
+            if (ViewModel.CopyCommand.CanExecute("LeftPane"))
+            {
+                ViewModel.CopyCommand.Execute("LeftPane");
+            }
         }
     }
 }

@@ -10,10 +10,6 @@ namespace ClefViewer
 {
     internal class LogFile
     {
-        public string FilePath { get; set; }
-
-        public double TailSize { get; set; }
-
         public IEnumerable<LogRecord> IterateLogRecords(MainWindowViewModel viewModel, int skip, CancellationToken token, Action onIterationCompleted)
         {
             static bool IsJsonString(string line)
@@ -21,7 +17,13 @@ namespace ClefViewer
                 return !string.IsNullOrWhiteSpace(line) && line.StartsWith("{") && line.EndsWith("}");
             }
 
-            return ReadLines(skip, token, onIterationCompleted)
+            var tailSize = viewModel.TailSize;
+            if (tailSize <= 0)
+            {
+                throw new InvalidOperationException("Tail size must be grater than 0.");
+            }
+            
+            return ReadLines(viewModel.LogFilePath, tailSize, skip, token, onIterationCompleted)
                 .AsParallel()
                 .AsOrdered()
                 .WithCancellation(token)
@@ -98,25 +100,28 @@ namespace ClefViewer
         /// <summary>
         /// Same as <see cref="File.ReadLines(string)" />, but can open file that log writer process still opens it.
         /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="tailSize"></param>
         /// <param name="skip"></param>
         /// <param name="token"></param>
         /// <param name="onLoadCompleted"></param>
         /// <returns></returns>
-        private IEnumerable<string> ReadLines(long skip, CancellationToken token, Action onLoadCompleted)
+        private IEnumerable<string> ReadLines(string filePath, double tailSize, long skip, CancellationToken token,
+            Action onLoadCompleted)
         {
-            if (string.IsNullOrWhiteSpace(FilePath) || !File.Exists(FilePath))
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             {
                 yield break;
             }
 
             var count = 0;
-            using (var fileStream = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                Log.Verbose("ClefViewer.LogFile.ReadLines opened {FilePath}", FilePath);
+                Log.Verbose("ClefViewer.LogFile.ReadLines opened {FilePath}", filePath);
                 LoadedFileLength = fileStream.Length;
-                if (0 < TailSize)
+                if (0 < tailSize)
                 {
-                    fileStream.Position = Math.Max(0, fileStream.Length - (int)(TailSize * 1024 * 1024));
+                    fileStream.Position = Math.Max(0, fileStream.Length - (int)(tailSize * 1024 * 1024));
                 }
 
                 using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
@@ -140,7 +145,7 @@ namespace ClefViewer
                 }
             }
 
-            Log.Verbose("ClefViewer.LogFile.ReadLines end file reading: closed {FilePath}, it was {Line} lines.", FilePath, count);
+            Log.Verbose("ClefViewer.LogFile.ReadLines end file reading: closed {FilePath}, it was {Line} lines.", filePath, count);
             onLoadCompleted?.Invoke();
         }
 

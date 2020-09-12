@@ -26,15 +26,6 @@
     <Setting Name="Unwrap" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
-    <Setting Name="NumberWidth" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">10</Value>
-    </Setting>
-    <Setting Name="TimestampWidth" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">10</Value>
-    </Setting>
-    <Setting Name="ErrorLevelWidth" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">10</Value>
-    </Setting>
     <Setting Name="AutoReload" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
@@ -49,6 +40,12 @@
     </Setting>
     <Setting Name="FilterText" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="ShowUTC" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="UrlDecode" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>
 </SettingsFile>

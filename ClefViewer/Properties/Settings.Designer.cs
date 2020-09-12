@@ -121,42 +121,6 @@ namespace ClefViewer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("10")]
-        public double NumberWidth {
-            get {
-                return ((double)(this["NumberWidth"]));
-            }
-            set {
-                this["NumberWidth"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("10")]
-        public double TimestampWidth {
-            get {
-                return ((double)(this["TimestampWidth"]));
-            }
-            set {
-                this["TimestampWidth"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("10")]
-        public double ErrorLevelWidth {
-            get {
-                return ((double)(this["ErrorLevelWidth"]));
-            }
-            set {
-                this["ErrorLevelWidth"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool AutoReload {
             get {
@@ -212,6 +176,30 @@ namespace ClefViewer.Properties {
             }
             set {
                 this["FilterText"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool ShowUTC {
+            get {
+                return ((bool)(this["ShowUTC"]));
+            }
+            set {
+                this["ShowUTC"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UrlDecode {
+            get {
+                return ((bool)(this["UrlDecode"]));
+            }
+            set {
+                this["UrlDecode"] = value;
             }
         }
     }
