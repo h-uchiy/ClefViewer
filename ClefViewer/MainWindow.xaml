@@ -69,7 +69,8 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Grid Grid.Column="0">
-                <ListView HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecordsView}"
+                <ListView x:Name="ListBox"
+                          HorizontalAlignment="Stretch" ItemsSource="{Binding LogRecordsView}"
                           SelectedItem="{Binding SelectedLogRecord}"
                           SelectedIndex="{Binding SelectedIndex}"
                           SelectionChanged="Selector_OnSelectionChanged"

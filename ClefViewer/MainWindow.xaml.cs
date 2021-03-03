@@ -1,10 +1,9 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using ClefViewer.Properties;
+using System.Windows.Threading;
 using Serilog;
 
 namespace ClefViewer
@@ -17,28 +16,45 @@ namespace ClefViewer
         public MainWindow()
         {
             InitializeComponent();
+            
+            ViewModel.PropertyChanged += (sender, args) =>
+            {
+                switch (args.PropertyName)
+                {
+                    case nameof(ViewModel.SelectedFilterMethods):
+                    case nameof(ViewModel.SelectedLevelIndex):
+                        Dispatcher.InvokeAsync(ShowSelectedRow, DispatcherPriority.Background);
+                        break;
+                }
+            };
         }
 
         private void Selector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!(sender is ListBox listBox))
+
+            if (!ReferenceEquals(sender, ListBox))
             {
                 return;
             }
 
-            ViewModel.SelectedLogRecords = listBox.SelectedItems.Cast<LogRecord>().ToList();
+            ViewModel.SelectedLogRecords = ListBox.SelectedItems.Cast<LogRecord>().ToList();
 
             // Show selected row when selected row was changed from view model
-            if (0 < listBox.SelectedItems.Count)
-            {
-                var selectedItem = listBox.SelectedItems[0];
-                if (selectedItem != null)
-                {
-                    listBox.ScrollIntoView(selectedItem);
-                }
-            }
+            ShowSelectedRow();
 
             e.Handled = true;
+        }
+        
+        private void ShowSelectedRow()
+        {
+            if (0 < ListBox.SelectedItems.Count)
+            {
+                var selectedItem = ListBox.SelectedItems[0];
+                if (selectedItem != null)
+                {
+                    ListBox.ScrollIntoView(selectedItem);
+                }
+            }
         }
 
         private void MainWindow_OnClosed(object sender, EventArgs e)
