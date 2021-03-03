@@ -10,25 +10,23 @@ namespace ClefViewer
 {
     internal class LogFile
     {
-        public IEnumerable<LogRecord> IterateLogRecords(MainWindowViewModel viewModel, int skip, CancellationToken token, Action onIterationCompleted)
+        public IEnumerable<string> IterateLines(string logFilePath, double tailSize, int skip, CancellationToken token, Action onIterationCompleted)
         {
             static bool IsJsonString(string line)
             {
                 return !string.IsNullOrWhiteSpace(line) && line.StartsWith("{") && line.EndsWith("}");
             }
 
-            var tailSize = viewModel.TailSize;
-            if (tailSize <= 0)
+            if (tailSize < 0)
             {
-                throw new InvalidOperationException("Tail size must be grater than 0.");
+                throw new InvalidOperationException("Tail size must be grater or equal to 0.");
             }
-            
-            return ReadLines(viewModel.LogFilePath, tailSize, skip, token, onIterationCompleted)
+
+            return ReadLines(logFilePath, tailSize, skip, token, onIterationCompleted)
                 .AsParallel()
                 .AsOrdered()
                 .WithCancellation(token)
-                .Where(IsJsonString)
-                .Select((line, idx) => new LogRecord(viewModel, line, skip + idx + 1));
+                .Where(IsJsonString);
         }
 
         private static IEnumerable<long> Sequence(long start, long stop, long skip)

@@ -283,7 +283,10 @@ namespace ClefViewer
             {
                 var showLastRecord = SelectedIndex == (LogRecordsView?.Count ?? 0) - 1;
 
-                var logRecords = _logFile.IterateLogRecords(this, 0, CancellationToken.None, null);
+                var tailSize = Tail ? TailSize : 0;
+                var logRecords = _logFile
+                    .IterateLines(LogFilePath, tailSize, 0, CancellationToken.None, null)
+                    .Select((line, idx) => new LogRecord(this, line, idx + 1));
                 LogRecordsView = (CollectionView)CollectionViewSource.GetDefaultView(logRecords);
                 ApplyFilter();
 
