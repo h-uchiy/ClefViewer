@@ -17,6 +17,7 @@
         d:DesignHeight="300" d:DesignWidth="800">
     <Window.Resources>
         <ContextMenu x:Key="LeftPaneContextMenu">
+            <MenuItem Header="{Binding TimeSpan, Mode=OneWay}" Visibility="{Binding IsDiffVisible, Converter={dxmvvm:BooleanToVisibilityConverter}}"/>
             <MenuItem Header="Copy" Command="{Binding CopyCommand}" CommandParameter="LeftPane"/>
         </ContextMenu>
         <dxmvvm:NumericToBooleanConverter x:Key="NumericToBooleanConverter"/>

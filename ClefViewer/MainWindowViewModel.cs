@@ -84,7 +84,7 @@ namespace ClefViewer
         public IList<LogRecord> SelectedLogRecords
         {
             get => _selectedLogRecords;
-            set => SetValue(ref _selectedLogRecords, value);
+            set => SetValue(ref _selectedLogRecords, value, () => RaisePropertiesChanged(nameof(TimeSpan), nameof(IsDiffVisible)));
         }
 
         public bool Render
@@ -170,6 +170,19 @@ namespace ClefViewer
             get => _selectedLevelIndex;
             set => SetValue(ref _selectedLevelIndex, value, ApplyFilter);
         }
+
+        public string TimeSpan
+        {
+            get
+            {
+                var first = SelectedLogRecords[0].LogEvent.Timestamp;
+                var second = SelectedLogRecords[1].LogEvent.Timestamp;
+                var diff = second - first;
+                return diff.ToString("g");
+            }
+        }
+
+        public bool IsDiffVisible => 2 == SelectedLogRecords.Count;
 
         public void Dispose()
         {
